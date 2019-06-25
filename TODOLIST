@@ -1,0 +1,52 @@
+FATTO Aggiornare FinalSmoothing per tutte le classi aggiungendo una sqrt nel log del raggio
+
+FATTO Modificare la gestione delle tipologie di colorazione, pensando magari a una  cosa tipo quella delle formule:
+		FATTO Classe che contiene i dati delle varie colorazioni
+		FATTO Classe manager che li fornisce
+		FATTO Classe parameter per l'input/output
+
+FATTO Aggiornare tutte le classi di FracCalculator per usare al meglio le Formule e la nuova modalità di gestione delle colorazioni e di inizializzazione
+
+FATTO Cambiare il calcolo dell'iterazione frazionaria per le formule generali
+
+
+
+FATTO Spostare le informazioni nel pannello della Formula  
+		FATTO Alternate
+		FATTO Conjugate
+		FATTO Fixed
+		FATTO Iters
+		
+FATTO Salvataggio/Caricamento col nuovo formato
+	Ordine di salvataggio:
+	 FATTO 1) Informazioni Base di MandelFrac con angoli
+	 
+	 FATTO 2) Formula 
+	 
+	 FATTO 3) Layer:
+		General  ->OK
+		ColorParameters ->OK
+		Color Component(s) ->Unchanged,OK
+	 FATTO 4) OrbitManager
+		General ->OK
+		Orbit(s) ->Unchanged,OK
+	Per poter caricare solo una cosa da un file completo: Inserire delle Keyword nel file
+	e.g.
+	
+	//inizio file
+	#MAIN
+	parametri main
+	#FORMULA
+	parametri formula
+	etc.
+	
+	//fine file
+	
+	
+	
+	
+	
+FATTO Bottoni di salvataggio/caricamento della sola formula
+- Grafica pannello Formula (dimensioni)
+
+- Correggere il BUG che parte a volte quando il thread sembra non trovare un puntatore settato correttamente

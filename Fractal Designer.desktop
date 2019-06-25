@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Fractal Designer
+Comment=
+Exec=./run
+Icon=/home/pietro/Dropbox/Programmi_per_diletto/MandelBrot/icon.png
+Terminal=false
+StartupNotify=false

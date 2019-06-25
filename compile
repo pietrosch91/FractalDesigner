@@ -1,0 +1,24 @@
+#!/bin/bash
+#**** PULSER ****
+echo DOING_MANDELBROT
+rm Class/*.class
+rm sources.txt
+ls Src/Main/*.java >sources.txt
+ls Src/Colouring/*.java >>sources.txt
+ls Src/Orbits/*.java >>sources.txt
+ls Src/Formulas/*.java >>sources.txt
+ls Src/UI/*.java >>sources.txt
+
+
+
+#javac -Xlint:deprecation -Xlint:unchecked @sources.txt
+javac -d Class/ @sources.txt
+jar cvfm Class/mandelbrot.jar manifest.txt Class/*.class
+cd ..
+echo DONE_MANDELBROT
+#echo
+#echo
+#echo "**************************************************************"
+#echo "Please check that CLASSPATH is defined as follows in .bashrc"
+#echo "export CLASSPATH=/usr/share/java/*:/usr/local/java_cntrl_vm/*:/usr/local/java_cntrl_vm/vmecamac/*:/usr/local/java_cntrl_vm/caenhv/*:/usr/local/java_cntrl_vm/server/*:."
+#echo "**************************************************************"
