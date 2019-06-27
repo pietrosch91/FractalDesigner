@@ -3,6 +3,7 @@ Src/Main/FractalCalculator.java
 Src/Main/FractalControl.java
 Src/Main/FractalDesigner.java
 Src/Main/MandelFrac.java
+Src/Main/WaterMarkSettings.java
 Src/Colouring/ColorComponent.java
 Src/Colouring/ColoringManager.java
 Src/Colouring/ColoringParameter.java

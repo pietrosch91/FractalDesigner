@@ -8,8 +8,16 @@ import static java.lang.Math.abs;
 import static java.lang.Math.cos;
 import static java.lang.Math.exp;
 import static java.lang.Math.pow;
+import static java.lang.Math.round;
 import static java.lang.Math.sin;
 import static java.lang.Math.sqrt;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 import javax.swing.event.ChangeEvent;
@@ -90,6 +98,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 	double XUL,YUL,XDR,YDR,Cx,Cy,Pdim;
 	//Label Frame variables
 	double XUL_L,YUL_L,XDR_L,YDR_L;
+	boolean AddFiligrana;
 
 	//JLabel prevLab;
 	
@@ -98,11 +107,12 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 	FractalControl mycontrol;
 	Layer mylayer;
 	FormulaEditor myformula;
+	WaterMarkSettings mywm;
 	DrawManager fracdrawer;
 
 	//Jbuttons and panel
 	JPanel MenuPanel;
-	JButton DrawBtn,StopBtn,UpdateBtn,ResizeBtn,CntrlBtn,FormulaBtn,ColorBtn,OrbitBtn,SaveImgBtn,SaveSetBtn,LoadSetBtn,CorbBtn;
+	JButton DrawBtn,StopBtn,UpdateBtn,ResizeBtn,CntrlBtn,FormulaBtn,ColorBtn,OrbitBtn,SaveImgBtn,SaveSetBtn,LoadSetBtn,CorbBtn,WMBtn;
 	
 	JLabel PicLabel;
 	
@@ -116,6 +126,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     int[] Pixels;
     double[] Matrix;
     BufferedImage pic;
+    BufferedImage filigrana;
     ImageIcon picIco;
     Iterator iter;
     
@@ -123,6 +134,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     static String DocFolder;
 
 	MandelFrac(int W,int H){
+		AddFiligrana=true;
 		JFileChooser fr = new JFileChooser();
         FileSystemView fw = fr.getFileSystemView();
         System.out.println(fw.getDefaultDirectory());
@@ -184,6 +196,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		mylayer=new Layer();
 		mycontrol=new FractalControl(this);
 		myformula=new FormulaEditor(this);
+		mywm=new WaterMarkSettings(this);
 		ParamR=new double[12];
 		ParamI=new double[12];
 		pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
@@ -222,7 +235,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		c.gridx=c.gridy=0;
 		//TopPanel
 		MenuPanel=new JPanel();
-		MenuPanel.setLayout(new GridLayout(1,11,1,1));
+		MenuPanel.setLayout(new GridLayout(1,12,1,1));
 		DrawBtn=new JButton("Draw");
 		DrawBtn.setFocusable(false);
 		DrawBtn.setActionCommand("DrawBtn");
@@ -263,6 +276,11 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		CorbBtn.setActionCommand("CorbBtn");
 		CorbBtn.addActionListener(this);
 		MenuPanel.add(CorbBtn);
+		WMBtn=new JButton("WaterMark");
+		WMBtn.setFocusable(false);
+		WMBtn.setActionCommand("WMBtn");
+		WMBtn.addActionListener(this);
+		MenuPanel.add(WMBtn);
 		SaveImgBtn=new JButton("Save Img");
 		SaveImgBtn.setFocusable(false);
 		SaveImgBtn.setActionCommand("SaveImgBtn");
@@ -313,6 +331,10 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     
     public void Update(){
 		//System.out.println("Update");
+		/*if(AddFiligrana){
+			//PrintFiligrana();
+			addTextWatermark("Pietro Ottanelli");		}*/
+		
         if(!ForceRes){
             picIco.setImage(pic);
            	PicLabel.setIcon(picIco);
@@ -530,6 +552,7 @@ void PrintFile(File f){
 		mylayer.PrintToFile(o);
 		myorb.PrintToFile(o);
 		myorb_c.PrintToFile(o);
+		mywm.PrintToFile(o);
 	    o.close();
 	}catch(IOException e){}
 }
@@ -602,7 +625,8 @@ public void ReadFile(File in){
 	myformula.ReadFromFile(in);
 	mylayer.ReadFromFile(in);
 	myorb.ReadFromFile(in);		
-	myorb_c.ReadFromFile(in);		
+	myorb_c.ReadFromFile(in);	
+	mywm.ReadFromFile(in);
 	StopDraw();
     initDraw();      
 }
@@ -642,6 +666,9 @@ public void actionPerformed(ActionEvent e){
 		}
 		else if(cmd.equals("CorbBtn")){
 			myorb_c.setVisible(true);
+		}
+		else if(cmd.equals("WMBtn")){
+			mywm.setVisible(true);
 		}
 		else if(cmd.equals("SaveSetBtn")){
 			JFileChooser fc =new  JFileChooser();
@@ -830,6 +857,7 @@ public void actionPerformed(ActionEvent e){
 	
 	//Init Draw Command		 
 	public void initDraw(){
+		
 		//waitfor previous 
 		if(fracdrawer==null) System.out.printf("FracDrawer not found\n");
 		else{
@@ -868,6 +896,8 @@ public void actionPerformed(ActionEvent e){
 		iter=mylayer.GenerateIterator();
 		iter.Specialize(this);
     
+		//Prepare filigrana
+		PrepareFiligrana();
 		//set parameters of thread
 		status=new int[imgH];
 		for(int i=0;i<imgH;i++) status[i]=0;
@@ -889,6 +919,138 @@ public void actionPerformed(ActionEvent e){
 		return res;
 	}
 	
+	private BufferedImage resizeImageWithHint(BufferedImage originalImage){
+		double ratio=(double)originalImage.getHeight()/(double)originalImage.getWidth();
+		int iW,iH;
+		double IWD,IHD;
+		IWD=0.05*(double)imgW;
+		IHD=ratio*IWD;
+		iW=(int)round(IWD);
+		iH=(int)round(IHD);
+		BufferedImage resizedImage = new BufferedImage(iW, iH, TYPE_INT_ARGB_PRE);
+		Graphics2D g = resizedImage.createGraphics();
+		g.drawImage(originalImage, 0, 0, iW, iH, null);
+		g.dispose();	
+		g.setComposite(AlphaComposite.Src);
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY);
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,	RenderingHints.VALUE_ANTIALIAS_ON);
+		return resizedImage;
+    }	
+	
+	public void PrepareFiligrana(){
+		try{
+		int SpaceX=20;
+		int SpaceY=20;
+		File imageFile = new File("Binded-mark.png");
+		BufferedImage orig = ImageIO.read(imageFile);
+		filigrana = resizeImageWithHint(orig);	
+		}catch(IOException e){}			
+	}
+	
+	public void PrintFiligrana(){
+		if(filigrana!=null){
+			int SpaceX=20;
+			int SpaceY=20;
+			int iW,iH;
+			iW=filigrana.getWidth();
+			iH=filigrana.getHeight();
+			for(int i=0;i<iW;i++){
+				for(int j=0;j<iH;j++){
+					int pix=filigrana.getRGB(i,j);
+					int picpix=pic.getRGB(imgW-iW-SpaceX+i,imgH-iH-SpaceY+j);
+					int newpix;
+					int alpha=(pix>>24) & 0xFF;
+					double alphaD;
+					int Rd,Gd,Bd;
+					if(alpha==0) continue;
+					else if(alpha==255) newpix=pix;
+					else{
+						alphaD=(double) alpha/255.;
+						Rd=(int)round(alphaD*((double)((pix>>16) & 0xFF))+(1-alphaD)*((double)((picpix>>16) & 0xFF)));
+						Gd=(int)round(alphaD*((double)((pix>>8) & 0xFF))+(1-alphaD)*((double)((picpix>>8) & 0xFF)));
+						Bd=(int)round(alphaD*((double)((pix) & 0xFF))+(1-alphaD)*((double)((picpix) & 0xFF)));
+						newpix=(255<<24) | Rd<<16 | Gd<<8 | Bd;
+					}
+					//System.out.printf("%d %d %d %d %d %d\n",i,j,(pix>>24) & 0xFF,(pix>>16) & 0xFF,(pix>>8) & 0xFF,pix & 0xFF);
+					if(pix!=0) pic.setRGB(imgW-iW-SpaceX+i,imgH-iH-SpaceY+j,newpix);
+				}
+			}
+		}
+	}
+	
+	public void PrintWM(BufferedImage Watermark, int posX,int posY,boolean useDarken,boolean Invert){
+		if(useDarken) DarkenWM(Watermark,posX,posY,Invert);
+		else if(Watermark!=null){
+			//System.out.println("Watermark is present");
+			int iW,iH;
+			iW=Watermark.getWidth();
+			iH=Watermark.getHeight();
+			//System.out.printf("W=%d H=%d\n",iW,iH);
+			for(int i=0;i<iW;i++){
+				for(int j=0;j<iH;j++){
+					int pix=Watermark.getRGB(i,j);
+					int picpix=pic.getRGB(posX+i,posY+j);
+					int newpix;
+					int alpha=(pix>>24) & 0xFF;
+					double alphaD;
+					int Rd,Gd,Bd;
+				//	System.out.printf("%d %d %d %d %d %d\n",i,j,(pix>>24) & 0xFF,(pix>>16) & 0xFF,(pix>>8) & 0xFF,pix & 0xFF);
+					if(alpha==0) continue;
+					else if(alpha==255) newpix=pix;
+					else{
+						alphaD=(double) alpha/255.;
+						Rd=(int)round(alphaD*((double)((pix>>16) & 0xFF))+(1-alphaD)*((double)((picpix>>16) & 0xFF)));
+						Gd=(int)round(alphaD*((double)((pix>>8) & 0xFF))+(1-alphaD)*((double)((picpix>>8) & 0xFF)));
+						Bd=(int)round(alphaD*((double)((pix) & 0xFF))+(1-alphaD)*((double)((picpix) & 0xFF)));
+						newpix=(255<<24) | Rd<<16 | Gd<<8 | Bd;
+					}
+					if(pix!=0) pic.setRGB(posX+i,posY+j,newpix);
+				}
+			}
+		}
+		else System.out.println("Watermark is null");
+	}
+	
+	public void DarkenWM(BufferedImage Watermark, int posX,int posY,boolean Invert){
+		if(Watermark!=null){
+			//System.out.println("Watermark is present");
+			int iW,iH;
+			iW=Watermark.getWidth();
+			iH=Watermark.getHeight();
+			//System.out.printf("W=%d H=%d\n",iW,iH);
+			for(int i=0;i<iW;i++){
+				for(int j=0;j<iH;j++){
+					int pix=Watermark.getRGB(i,j);
+					int picpix=pic.getRGB(posX+i,posY+j);
+					int newpix;
+					int alpha=(picpix>>24) & 0xFF;
+					//double alphaD;
+					int Rd,Gd,Bd;
+					Rd=(picpix>>16) & 0XFF;
+					Gd=(picpix>>8) & 0XFF;
+					Bd=(picpix) & 0XFF;
+				//	System.out.printf("%d %d %d %d %d %d\n",i,j,(pix>>24) & 0xFF,(pix>>16) & 0xFF,(pix>>8) & 0xFF,pix & 0xFF);
+					if(pix==0) continue;
+					else{
+						if(Invert){
+							Rd=(int)round(128-0.7*(Rd-128));
+							Gd=(int)round(128-0.7*(Gd-128));
+							Bd=(int)round(128-0.7*(Bd-128));
+						}
+						else{
+							Rd=(int)round(0.25*Rd);
+							Gd=(int)round(0.25*Gd);
+							Bd=(int)round(0.25*Bd);						
+						}							
+						newpix=(alpha<<24) | (Rd<<16) | (Gd<<8) | Bd;
+						pic.setRGB(posX+i,posY+j,newpix);
+					}
+				}
+			}
+		}
+		else System.out.println("Watermark is null");
+	}
 	
 	
 	
