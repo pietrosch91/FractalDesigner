@@ -1,3 +1,4 @@
+import javax.swing.ImageIcon;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
@@ -34,65 +35,72 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 
 public class WaterMarkSettings extends JFrame implements ActionListener,MouseWheelListener,ChangeListener,WindowListener{
-	String fontname="LouisaCP";
-	String fonttype="otf";
-	//static final String fonts[] = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-	//String FontName;
-	//int FontIndex
-	String []Months={"January","February","March","April","May","June","July","August","September","October","November","December"};
-	Color []theColors={Color.GRAY,Color.DARK_GRAY,Color.LIGHT_GRAY,Color.BLACK,Color.WHITE,Color.RED,Color.GREEN,Color.BLUE};
-	Color []theFColors={Color.BLACK,Color.WHITE,Color.BLACK,Color.WHITE,Color.BLACK,Color.BLACK,Color.BLACK,Color.BLACK};
-	String []Cnames={"Gray","Dark Gray","Light Gray","Black","White","Red","Green","Blue"};
-	int colorind;
-	int ColorL,ColorH;
+	//String fontname="LouisaCP";
+	//String fonttype="otf";
+	boolean stop;
+	SignatureRefresher sr;
+	Color MyColor;
+	boolean needrefresh;
 	
-	String []Corners={"Upper Left","Upper Right","Lower Left","Lower Right"};
-	static int bw=10;
+	int XUL,YUL;
+	int XSIZE,YSIZE;
+	
+	static int bw=20;
 	static int bh=20;
-	String Datestring;
-	MandelFrac Parent;
-	double ImageHeightCM;
-	double ImageWidthCM;
-	double WMHeightCM;
-	double SpaceXCM,SpaceYCM;
-	boolean EnableWM;
-	boolean darken,invert;
-	int whichcorner;
-	
-	DateFormat month=new SimpleDateFormat("MM");
-	DateFormat year = new SimpleDateFormat("yyyy");
-		
-	BufferedImage mySignature;
-	
-	
-	
-	boolean EverithingGood;
-	
-	int ActualFontSize;
-	int posX,posY;
-	Rectangle2D ActualRect;
-	
-	
-	
-	
 	
 	JPanel P0;
 	
-	int FUDL,FUDH;
+	//Corner selection
+	JLabel CL;
+	JComboBox CUD;
 	int CUDL,CUDH;
+	String []Corners={"Upper Left","Upper Right","Lower Left","Lower Right"};
+	int whichcorner;
+	
+	//WMHeight selection
+	JLabel WMHL;
+	JSpinner WMHUD;
+	double WMHeightCM;
+		
+	//Lateral Displacement
+	JLabel SXL,SYL;
+	JSpinner SXUD,SYUD;
+	double SpaceXCM,SpaceYCM;
+	
+	//Color Selection
+	JLabel RedL,GreenL,BlueL;
+	JSlider RedUD,GreenUD,BlueUD;
+	int RR,GG,BB;
+	JLabel prevLab1;
+	
+	//FontSelection
+	String []AvailableFonts;
+	//int currentFont;
+	int FontH;
+	String cfname;
+	JLabel FontL;
+	JComboBox FontUD;
+	
+	//Author Selection
+	int AuthH;
+	JLabel AuthL;
+	JComboBox AuthUD;
+	String[]AvailableAuthors={"Pietro Ottanelli","Giulio Ottanelli"};
+	String currentAuth;
+	
+	//DateSelection
 	JButton DateBtn;
 	JTextField DateUD;
-	JLabel IHL,WMHL,SXL,SYL,CL,EL,REPL,ColorLab,FL;
-	JSpinner IHLUD,WMHUD,SXUD,SYUD;
-	JComboBox CUD,ColorUD,FUD;
-	JCheckBox ELUD;
-	JCheckBox BORDUD,BLURUD;
+	String []Months={"January","February","March","April","May","June","July","August","September","October","November","December"};
+	String Datestring;
+	DateFormat month=new SimpleDateFormat("MM");
+	DateFormat year = new SimpleDateFormat("yyyy");
 	
+	//PreviewLab
+	JLabel PrevLabMain;
 	
-	
-	
-	
-	
+	SignatureDrawer mysd;
+	MandelFrac Parent;
 	boolean Updating;
 	
 	public String GetMonth(Date d){
@@ -100,216 +108,146 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		return Full.substring(0,3)+".";
 	}
 	
+	//BlurRadius
+	JLabel BlurL;
+	JSpinner BlurUD;
+	int BlurRadius;
+	
+	//Enable-disable
+	JCheckBox Enable;
+	JButton RefreshBtn;
+	boolean EnableWM;
+	
+	JProgressBar RepBar;
+	
+	ImageIcon picIco;
+	
+	
+	//OK
+	public void ApplySize(JComponent target,int dimx,int dimy){
+		Dimension d=new Dimension(dimx,dimy);
+		target.setMinimumSize(d);
+		target.setMaximumSize(d);
+		target.setPreferredSize(d);
+		target.setSize(d);
+		target.setFocusable(false);
+	}
 	
 	public WaterMarkSettings(MandelFrac p){
-		try{
-		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-		ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File(fontname+"."+fonttype)));
-		}catch(FontFormatException e){
-		}catch(IOException e){};
+		stop=false;
+		picIco=new ImageIcon();		
+		LoadFonts();
 		Parent=p;
 		whichcorner=3;
 		//FontIndex=0;
-		ImageHeightCM=100;
-		darken=invert=false;
 		WMHeightCM=1;
 		SpaceXCM=SpaceYCM=2;
-		colorind=0;		
+		RR=GG=BB=0;
 		Date date = new Date();
 		Datestring=GetMonth(date)+" "+year.format(date);
+		BlurRadius=0;
 		EnableWM=false;
+		cfname="";
+		currentAuth="";
 		Updating=false;
-		BuildGraphics();			
-		UpdateDataInit();
+		BuildGraphics();
+		mysd=new SignatureDrawer(p,this);		
+		UpdateData();
 	}
 	
-	
-
-//End of image management
-	public void UpdateWMSize(){
-		String defText="Pietro Ottanelli, "+Datestring;
-		Graphics2D w = (Graphics2D) Parent.pic.getGraphics();
-		int fsize=1;
-		FontMetrics fontMetrics;
-		double targetRatio=WMHeightCM/ImageHeightCM;
-		while(true){
-            w.setFont(new Font(fontname,0, fsize));
-			fontMetrics = w.getFontMetrics();
-			ActualRect = fontMetrics.getStringBounds(defText, w);
-			double ratio=(double)ActualRect.getHeight()/(double)Parent.pic.getHeight();
-			if(ratio>=targetRatio) break;
-			fsize+=1;
+	public void LoadFonts(){
+		File folder = new File("Fonts");
+		File[] listOfFiles = folder.listFiles();
+		int count=0;
+		for (int i = 0; i < listOfFiles.length; i++){
+			if (listOfFiles[i].isFile()){
+				System.out.println("File " + listOfFiles[i].getName());
+				if(listOfFiles[i].getName().endsWith(".ttf") || listOfFiles[i].getName().endsWith(".otf")){
+					count++;
+					try{
+						GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+						ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, listOfFiles[i]));
+					}catch(FontFormatException e){
+					}catch(IOException e){};
+				}
+			}
 		}
-		ActualFontSize=fsize;
-		w.dispose();	
+		AvailableFonts=new String[count];
+		count=0;
+		for (int i = 0; i < listOfFiles.length; i++){
+			if (listOfFiles[i].isFile()){
+				//System.out.println("File " + listOfFiles[i].getName());
+				if(listOfFiles[i].getName().endsWith(".ttf") || listOfFiles[i].getName().endsWith(".otf")){
+					AvailableFonts[count]=listOfFiles[i].getName().substring(0,listOfFiles[i].getName().length()-4);
+					count++;
+				}
+			}
+		}	
 	}
 	
 	
-	public void UpdateWMPosition(){
+	public void PrepareSignatureAndULC(){
+		if(needrefresh) mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius);
+		UpdateRepBar("Finding Upper Left corner!",1000);
+		XSIZE=mysd.FinalImage.getWidth();
+		YSIZE=mysd.FinalImage.getHeight();
 		switch (whichcorner){
 			case 0:
-				posX=(int)round((double)Parent.imgW*SpaceXCM/ImageWidthCM);
-				posY=(int)round((double)Parent.imgH*SpaceYCM/ImageHeightCM);
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
 				break;
 			case 1:
-				posX=Parent.imgW-(int)round((double)Parent.imgW*SpaceXCM/ImageWidthCM+ActualRect.getWidth());
-				posY=(int)round((double)Parent.imgH*SpaceYCM/ImageHeightCM);
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE-20;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
 				break;
 			case 2:
-				posX=(int)round((double)Parent.imgW*SpaceXCM/ImageWidthCM);
-				posY=Parent.imgH-(int)round((double)Parent.imgH*SpaceYCM/ImageHeightCM+ActualRect.getHeight());
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE-20;
 				break;
 			case 3:
-				posX=Parent.imgW-(int)round((double)Parent.imgW*SpaceXCM/ImageWidthCM+ActualRect.getWidth());
-				posY=Parent.imgH-(int)round((double)Parent.imgH*SpaceYCM/ImageHeightCM+ActualRect.getHeight());
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE-20;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE-20;
 				break;
 			default:
-				posX=(int)round((double)Parent.imgW*SpaceXCM/ImageWidthCM);
-				posY=(int)round((double)Parent.imgH*SpaceYCM/ImageHeightCM);
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
 				break;
-		}		
+		}	
+		EndRefresh();
 	}
 	
-	public void CheckBoundaries(){
-		String Sres="Good Position";
-		boolean res=true;
-		if(posX<0 || posY<0){
-			res=false;
-			Sres="Bad Position";			
-		}
-		if(posX+ActualRect.getWidth()>Parent.imgW){
-			res=false;
-			Sres="Bad Position";	
-		}
-		if(posY+ActualRect.getHeight()>Parent.imgH){
-			res=false;
-			Sres="Bad Position";	
-		}
-		EverithingGood=res;
-		REPL.setText(Sres);	
+	public int ApplySignature(int i,int j,int Pixel,int type){
+		if(!EnableWM) return Pixel;	
+		int xoff,yoff;
+		xoff=i-XUL;
+		yoff=j-YUL;
+		if(xoff<0 || xoff>=XSIZE) return Pixel;
+		if(yoff<0 || yoff>=YSIZE) return Pixel;
+		return CombinePixel(xoff,yoff,Pixel,type);
 	}
 	
-	public void UpdateWMparams(boolean PosOnly){
-		ImageWidthCM=ImageHeightCM*(double)Parent.imgW/(double)Parent.imgH;
-		if(!PosOnly || ActualRect==null) UpdateWMSize();		
-		UpdateWMPosition();
-		CheckBoundaries();
-	};
-	
-	
-	public int GetCount(int i,int j,int radius){
-		int result=0;
-		if(mySignature.getRGB(i,j)==0) return 0;
-		//System.out.printf("Found non zero pixel\n");
-		int x,y,X,Y;
-		for(x=-radius;x<=radius;x++){
-			X=i+x;
-			if(X<0) continue;
-			if(X>=mySignature.getWidth())continue;
-			for(y=-radius+abs(x);y<=radius-abs(x);y++){
-				Y=j+y;
-				if(Y<0) continue;
-				if(Y>=mySignature.getHeight())continue;
-				
-				if(mySignature.getRGB(X,Y)==0) return 1;
-			}
-		}
-		return 0;
-	}
-	
-	public int GetSum(int i,int j,int radius){
-		int result=0;
-		int count=0;
-		int base=0;
-		//System.out.printf("Found non zero pixel\n");
-		int x,y,X,Y;
-		for(x=-radius;x<=radius;x++){
-			X=i+x;
-			if(X<0) continue;
-			if(X>=mySignature.getWidth())continue;
-			for(y=-radius+abs(x);y<=radius-abs(x);y++){
-				Y=j+y;
-				if(Y<0) continue;				
-				if(Y>=mySignature.getHeight())continue;
-				if((mySignature.getRGB(X,Y) ) !=0){
-					base=mySignature.getRGB(X,Y);
-					count++;
-				}				
-			}			
-		}
-		if(count==0){
-			//System.out.println("Count=0");
-			return 0;
-		}
-		int oldalpha=(mySignature.getRGB(i,j) >> 24) & 0xFF;
-		int newalpha;
-		if(oldalpha==255) newalpha=oldalpha;
-		else newalpha=(int)round(255*(double)count/(4*radius+1));
-		result=(base & 0xFFFFFF) | (newalpha<<24);
-		return result;
-	}
-	
-
-	
-	public void Bordify(int rad){
-		BufferedImage newimg=new BufferedImage(mySignature.getWidth(),mySignature.getHeight(),TYPE_INT_ARGB_PRE);
-		for(int i=0;i<newimg.getWidth();i++){
-			for(int j=0;j<newimg.getHeight();j++){
-				newimg.setRGB(i,j,mySignature.getRGB(i,j)*GetCount(i,j,rad));
-			}
-		}
-		mySignature=newimg;
-	}
-	
-	public void Blurrify(int rad){
-		BufferedImage newimg=new BufferedImage(mySignature.getWidth(),mySignature.getHeight(),TYPE_INT_ARGB_PRE);
-		for(int i=0;i<newimg.getWidth();i++){
-			for(int j=0;j<newimg.getHeight();j++){
-				newimg.setRGB(i,j,GetSum(i,j,rad));
-			}
-		}
-		mySignature=newimg;
-	}
-	
-	public void DrawBorder(){
-		int blk=(255<<24);
-		for(int i=0;i<mySignature.getWidth();i++){
-			mySignature.setRGB(i,0,blk);
-			mySignature.setRGB(i,mySignature.getHeight()-1,blk);
-		}
-		for(int i=0;i<mySignature.getHeight();i++){
-			mySignature.setRGB(0,i,blk);
-			mySignature.setRGB(mySignature.getWidth()-1,i,blk);
-		}
+	public int CombinePixel(int i,int j,int Pixel,int type){
+		int pix=mysd.GetPixel(i,j);
+		if(pix==0) return Pixel;
+		else{
+			int alpha=(pix>>24)& 0xFF;
+			if(alpha==255) return pix;
+			double alphaD=(double) alpha/255.;
+			int	Rd=(int)round(alphaD*((double)((pix>>16) & 0xFF))+(1-alphaD)*((double)((Pixel>>16) & 0xFF)));
+			int	Gd=(int)round(alphaD*((double)((pix>>8) & 0xFF))+(1-alphaD)*((double)((Pixel>>8) & 0xFF)));
+			int	Bd=(int)round(alphaD*((double)((pix) & 0xFF))+(1-alphaD)*((double)((Pixel) & 0xFF)));
+			return (255<<24) | Rd<<16 | Gd<<8 | Bd;
+		}	
+		//return pix;
 	}
 	
 	
-	public void ApplyWM(){
-		if(!EnableWM) return;
-		UpdateWMparams(false);
-		if(!EverithingGood) return;
-		String defText="Pietro Ottanelli, "+Datestring;
-		mySignature=new BufferedImage((int)ceil(ActualRect.getWidth())+10,(int)ceil(ActualRect.getHeight()),TYPE_INT_ARGB_PRE);
-		Graphics2D w = (Graphics2D) mySignature.getGraphics();
-		w.drawImage(mySignature, 0, 0, null);
-        AlphaComposite alphaChannel = AlphaComposite.Src;
-        w.setComposite(alphaChannel);
-        w.setColor(theColors[colorind]);
-        w.setFont(new Font(fontname, 0, ActualFontSize));
-		w.drawString(defText, 5, (int)ceil(0.65*ActualRect.getHeight()));
-        w.dispose();	
-       // if(darken) Bordify(3);
-       // if(invert) Blurrify(2);
-      //  DrawBorder();
-        Parent.PrintWM(mySignature,posX,posY,darken,invert);
-	}
+	
+	
 	
 	public void PrintData (BufferedWriter o) throws IOException{
 		o.write("#WATERMARK\n");
 		String temp;
-        temp=String.format("imgh %f\n",ImageHeightCM);
-        temp=temp.replace(',','.');
-        o.write(temp);
         temp=String.format("wmh %f\n",WMHeightCM);
         temp=temp.replace(',','.');
         o.write(temp);
@@ -321,14 +259,20 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	    o.write(temp);
 	    temp=String.format("corner %d\n",whichcorner);
 	    o.write(temp);
-	    temp=String.format("color %d\n",colorind);
+	    temp=String.format("blurr %d\n",BlurRadius);
+	    o.write(temp);
+	    temp=String.format("FontName %s\n",cfname);
+	    o.write(temp);
+	    temp=String.format("AuthName %s\n",currentAuth);
+	    o.write(temp);	    
+	    temp=String.format("colorR %d\n",RR);
+	    o.write(temp);
+	    temp=String.format("colorG %d\n",GG);
+	    o.write(temp);
+	    temp=String.format("colorB %d\n",BB);
 	    o.write(temp);
         //Parameters
        	temp=String.format("usewm %b\n",EnableWM);
-		o.write(temp);		
-		temp=String.format("darken %b\n",darken);
-		o.write(temp);		
-		temp=String.format("invert %b\n",invert);
 		o.write(temp);		
 		temp=String.format("date %s\n",Datestring.replace(' ','_'));
 		o.write(temp);		
@@ -350,10 +294,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			if(temp.equals("#END")) return;
 			st=new StringTokenizer(temp);
 			String vname=st.nextToken();
-			if(vname.equals("imgh")){
-				ImageHeightCM=Double.parseDouble(st.nextToken());
-			}
-			else if(vname.equals("wmh")){
+			if(vname.equals("wmh")){
 				WMHeightCM=Double.parseDouble(st.nextToken());
 			}
 			else if(vname.equals("sx")){
@@ -365,17 +306,26 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			else if(vname.equals("usewm")){
 				EnableWM=Boolean.parseBoolean(st.nextToken());
 			}
-			else if(vname.equals("darken")){
-				darken=Boolean.parseBoolean(st.nextToken());
-			}
-			else if(vname.equals("invert")){
-				invert=Boolean.parseBoolean(st.nextToken());
-			}
 			else if(vname.equals("corner")){
 				whichcorner=Integer.parseInt(st.nextToken());
 			}
-			else if(vname.equals("color")){
-				colorind=Integer.parseInt(st.nextToken());
+			else if(vname.equals("blurr")){
+				BlurRadius=Integer.parseInt(st.nextToken());
+			}
+			else if(vname.equals("colorR")){
+				RR=Integer.parseInt(st.nextToken());
+			}
+			else if(vname.equals("colorG")){
+				GG=Integer.parseInt(st.nextToken());
+			}
+			else if(vname.equals("colorB")){
+				BB=Integer.parseInt(st.nextToken());
+			}
+			else if(vname.equals("FontName")){
+				cfname=st.nextToken();
+			}
+			else if(vname.equals("AuthName")){
+				currentAuth=st.nextToken();
 			}
 			else if(vname.equals("date")){
 				if(st.hasMoreTokens()){
@@ -417,50 +367,27 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	//OK
 	public void UpdateData(){
 		Updating=true;
-		IHLUD.setValue(ImageHeightCM);
 		WMHUD.setValue(WMHeightCM);
 		SXUD.setValue(SpaceXCM);
 		SYUD.setValue(SpaceYCM);
 		CUD.setSelectedIndex(whichcorner);
-		ELUD.setSelected(EnableWM);
-		BORDUD.setSelected(darken);
-		BLURUD.setSelected(invert);
-		ColorUD.setSelectedIndex(colorind);
-		ColorUD.setBackground(theColors[colorind]);
-		ColorUD.setForeground(theFColors[colorind]);
+		Enable.setSelected(EnableWM);
+		RedUD.setValue(RR);
+		GreenUD.setValue(GG);
+		BlueUD.setValue(BB);
+		UpdateColorPrev();
 		DateUD.setText(Datestring);
-		UpdateWMparams(false);
+		BlurUD.setValue(BlurRadius);
+		FontUD.setSelectedIndex(0);
+		FontUD.setSelectedItem(cfname);
+		cfname=(String)FontUD.getSelectedItem();
+		AuthUD.setSelectedIndex(0);
+		AuthUD.setSelectedItem(currentAuth);
+		currentAuth=(String)AuthUD.getSelectedItem();
+		RequestRefresh();
+		UpdatePreview(false);
 		Updating=false;		
-	}
-		
-	public void UpdateDataInit(){
-		Updating=true;
-		IHLUD.setValue(ImageHeightCM);
-		WMHUD.setValue(WMHeightCM);
-		SXUD.setValue(SpaceXCM);
-		SYUD.setValue(SpaceYCM);
-		CUD.setSelectedIndex(whichcorner);
-		ELUD.setSelected(EnableWM);
-		BORDUD.setSelected(darken);
-		BLURUD.setSelected(invert);
-		ColorUD.setSelectedIndex(colorind);
-		ColorUD.setBackground(theColors[colorind]);
-		ColorUD.setForeground(theFColors[colorind]);
-		DateUD.setText(Datestring);
-		//UpdateWMparams(false);
-		Updating=false;		
-	}
-	
-	//OK
-	public void ApplySize(JComponent target,int dimx,int dimy){
-		Dimension d=new Dimension(dimx,dimy);
-		target.setMinimumSize(d);
-		target.setMaximumSize(d);
-		target.setPreferredSize(d);
-		target.setSize(d);
-		target.setFocusable(false);
-	}
-	
+	}	
 	
 	public void BuildGraphics(){
 		setTitle("Water Mark Settings");
@@ -475,85 +402,13 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		
 		c1.gridx=0;
 		c1.gridy=0;
-			
+		
 		P0=new JPanel();
 		P0.setLayout(new GridBagLayout());
 		P0.setBorder(new LineBorder(Color.BLACK));
-		
-		//First control->Desired image height
+	
+		//First Row Position Selection
 		c1.gridy=0;
-		c1.gridx=0;
-		IHL=new JLabel("Img Height(cm)");
-		IHL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(IHL,20*bw,bh);
-		P0.add(IHL,c1);
-
-		c1.gridx=1;
-		IHLUD=new JSpinner();
-		ApplySize(IHLUD,20*bw,bh);
-		IHLUD.setName("IHLUD");
-		IHLUD.setModel(new SpinnerNumberModel(10.0d,1.0d,500.0d,1.0d));
-		IHLUD.setEditor(new javax.swing.JSpinner.NumberEditor(IHLUD, "###0.00"));        		
-		IHLUD.addChangeListener(this);
-		IHLUD.addMouseWheelListener(this);
-		P0.add(IHLUD,c1);	
-		
-		//Second : height of the watermark
-		c1.gridy=1;
-		c1.gridx=0;
-		WMHL=new JLabel("Sign Height(cm)");
-		WMHL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(WMHL,20*bw,bh);
-		P0.add(WMHL,c1);
-
-		c1.gridx=1;
-		WMHUD=new JSpinner();
-		ApplySize(WMHUD,20*bw,bh);
-		WMHUD.setName("WMHUD");
-		WMHUD.setModel(new SpinnerNumberModel(1.0d,0.2d,10.0d,0.2d));
-		WMHUD.setEditor(new javax.swing.JSpinner.NumberEditor(WMHUD, "###0.00"));        		
-		WMHUD.addChangeListener(this);
-		WMHUD.addMouseWheelListener(this);
-		P0.add(WMHUD,c1);	
-		
-		//Third X spacing
-		c1.gridy=2;
-		c1.gridx=0;
-		SXL=new JLabel("X Spacing(cm)");
-		SXL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(SXL,20*bw,bh);
-		P0.add(SXL,c1);
-
-		c1.gridx=1;
-		SXUD=new JSpinner();
-		ApplySize(SXUD,20*bw,bh);
-		SXUD.setName("SXUD");
-		SXUD.setModel(new SpinnerNumberModel(1.0d,1.0d,10.0d,0.2d));
-		SXUD.setEditor(new javax.swing.JSpinner.NumberEditor(SXUD, "###0.00"));        		
-		SXUD.addChangeListener(this);
-		SXUD.addMouseWheelListener(this);
-		P0.add(SXUD,c1);	
-		
-		//Fourth Y spacing
-		c1.gridy=3;
-		c1.gridx=0;
-		SYL=new JLabel("Y Spacing(cm)");
-		SYL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(SYL,20*bw,bh);
-		P0.add(SYL,c1);
-
-		c1.gridx=1;
-		SYUD=new JSpinner();
-		ApplySize(SYUD,20*bw,bh);
-		SYUD.setName("SYUD");
-		SYUD.setModel(new SpinnerNumberModel(1.0d,1.0d,10.0d,0.2d));
-		SYUD.setEditor(new javax.swing.JSpinner.NumberEditor(SYUD, "###0.00"));        		
-		SYUD.addChangeListener(this);
-		SYUD.addMouseWheelListener(this);
-		P0.add(SYUD,c1);	
-		
-		//FIFTH Corner selection
-		c1.gridy=4;
 		c1.gridx=0;
 		CL=new JLabel("Select Corner");
 		CL.setHorizontalAlignment(SwingConstants.CENTER);
@@ -570,29 +425,121 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
         CUD.addActionListener(this);
         CUD.addMouseWheelListener(this);
 		P0.add(CUD,c1);	
-		
-		//Sixth Color selection
-		c1.gridy=5;
+	
+		//Second row Height selection
+		c1.gridy=1;
 		c1.gridx=0;
-		ColorLab=new JLabel("Select Color");
-		ColorLab.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(ColorLab,20*bw,bh);
-		P0.add(ColorLab,c1);
+		WMHL=new JLabel("Text Height(cm)");
+		WMHL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(WMHL,20*bw,bh);
+		P0.add(WMHL,c1);
+
+		c1.gridx=1;
+		WMHUD=new JSpinner();
+		ApplySize(WMHUD,20*bw,bh);
+		WMHUD.setName("WMHUD");
+		WMHUD.setModel(new SpinnerNumberModel(1.0d,0.2d,30.0d,0.2d));
+		WMHUD.setEditor(new javax.swing.JSpinner.NumberEditor(WMHUD, "###0.00"));        		
+		WMHUD.addChangeListener(this);
+		WMHUD.addMouseWheelListener(this);
+		P0.add(WMHUD,c1);	
+	
+		//Third and Fourth row: lateral displacement
+		c1.gridy=2;
+		c1.gridx=0;
+		SXL=new JLabel("X Spacing(cm)");
+		SXL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(SXL,20*bw,bh);
+		P0.add(SXL,c1);
+
+		c1.gridx=1;
+		SXUD=new JSpinner();
+		ApplySize(SXUD,20*bw,bh);
+		SXUD.setName("SXUD");
+		SXUD.setModel(new SpinnerNumberModel(1.0d,1.0d,100.0d,0.2d));
+		SXUD.setEditor(new javax.swing.JSpinner.NumberEditor(SXUD, "###0.00"));        		
+		SXUD.addChangeListener(this);
+		SXUD.addMouseWheelListener(this);
+		P0.add(SXUD,c1);	
+		
+		c1.gridy=3;
+		c1.gridx=0;
+		SYL=new JLabel("Y Spacing(cm)");
+		SYL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(SYL,20*bw,bh);
+		P0.add(SYL,c1);
+
+		c1.gridx=1;
+		SYUD=new JSpinner();
+		ApplySize(SYUD,20*bw,bh);
+		SYUD.setName("SYUD");
+		SYUD.setModel(new SpinnerNumberModel(1.0d,1.0d,100.0d,0.2d));
+		SYUD.setEditor(new javax.swing.JSpinner.NumberEditor(SYUD, "###0.00"));        		
+		SYUD.addChangeListener(this);
+		SYUD.addMouseWheelListener(this);
+		P0.add(SYUD,c1);	
+	
+		//Rows 5-6-7-8 RGB color and preview
+		c1.gridy=4;
+		c1.gridx=0;
+		RedL=new JLabel("Red");
+		RedL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(RedL,20*bw,bh);
+		P0.add(RedL,c1);
 		
 		c1.gridx=1;
-		ColorUD=new JComboBox();
-		ColorUD.setName("ColorUD");
-		ApplySize(ColorUD,20*bw,bh);
-		ColorL=0;
-		ColorH=7;
-		ColorUD.setModel(new DefaultComboBoxModel<>(Cnames));
-        ColorUD.addActionListener(this);
-        ColorUD.addMouseWheelListener(this);
-        ColorUD.setOpaque(true);
-		P0.add(ColorUD,c1);	
+		RedUD=new JSlider();
+		ApplySize(RedUD,20*bw,bh);
+		RedUD.setMinimum(0);
+		RedUD.setMaximum(255);
+		RedUD.addChangeListener(this);
+		RedUD.setName("RedUD");
+		P0.add(RedUD,c1);
 		
-		//Seventh Date Selection
+		c1.gridy=5;
+		c1.gridx=0;
+		GreenL=new JLabel("Green");
+		GreenL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(GreenL,20*bw,bh);
+		P0.add(GreenL,c1);
+		
+		c1.gridx=1;
+		GreenUD=new JSlider();
+		ApplySize(GreenUD,20*bw,bh);
+		GreenUD.setMinimum(0);
+		GreenUD.setMaximum(255);
+		GreenUD.addChangeListener(this);
+		GreenUD.setName("GreenUD");
+		P0.add(GreenUD,c1);
+		
 		c1.gridy=6;
+		c1.gridx=0;
+		BlueL=new JLabel("Blue");
+		BlueL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(BlueL,20*bw,bh);
+		P0.add(BlueL,c1);
+		
+		c1.gridx=1;
+		BlueUD=new JSlider();
+		ApplySize(BlueUD,20*bw,bh);
+		BlueUD.setMinimum(0);
+		BlueUD.setMaximum(255);
+		BlueUD.addChangeListener(this);
+		BlueUD.setName("BlueUD");
+		P0.add(BlueUD,c1);
+		
+		
+		
+		c1.gridy=7;
+		c1.gridx=0;
+		c1.gridwidth=2;
+		prevLab1=new JLabel();
+		prevLab1.setOpaque(true);
+		ApplySize(prevLab1,40*bw,bh);
+		P0.add(prevLab1,c1);
+		c1.gridwidth=1;
+		//Row 9 Date selection
+		c1.gridy=8;
 		c1.gridx=0;
 		DateBtn=new JButton("Select Date");
 		DateBtn.setName("DateBtn");
@@ -607,80 +554,105 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		DateUD.setFocusable(true);
 		DateUD.addActionListener(this);
         P0.add(DateUD,c1);	
-		
-		
-		
-		//Eight EnableWM
-		c1.gridy=7;
-		c1.gridx=0;
-		EL=new JLabel("Apply Watermark");
-		EL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(EL,20*bw,bh);
-		P0.add(EL,c1);
+        
+        //Row10 FontSelection 
+        c1.gridy=9;
+        c1.gridx=0;
+        FontL=new JLabel("Font");
+		FontL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(FontL,20*bw,bh);
+		P0.add(FontL,c1);
 		
 		c1.gridx=1;
-		ELUD=new JCheckBox();
-		ApplySize(ELUD,20*bw,bh);
-		ELUD.setName("ELUD");
-		ELUD.addActionListener(this);
-		P0.add(ELUD,c1);	
-		
-		
-		//Ninth Bord and invert
-		c1.gridy=8;
-		c1.gridx=0;
-		BORDUD=new JCheckBox();
-		ApplySize(BORDUD,20*bw,bh);
-		BORDUD.setName("BORDUD");
-		BORDUD.setText("Darken");
-		BORDUD.addActionListener(this);
-		P0.add(BORDUD,c1);
-		
-		c1.gridx=1;
-		BLURUD=new JCheckBox();
-		ApplySize(BLURUD,20*bw,bh);
-		BLURUD.setName("BLURUD");
-		BLURUD.setText("Invert");
-		BLURUD.addActionListener(this);
-		P0.add(BLURUD,c1);
-		
-		
-		//Tenth Label
-		c1.gridy=9;
-		c1.gridx=0;
-		c1.gridwidth=2;
-		REPL=new JLabel();
-		REPL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(REPL,40*bw,bh);
-		P0.add(REPL,c1);			
-		
-	/*	//Temp
-		c1.gridwidth=1;		
-		c1.gridy=9;
-		c1.gridx=0;
-		FL=new JLabel("Select Font");
-		FL.setHorizontalAlignment(SwingConstants.CENTER);
-		ApplySize(FL,20*bw,bh);
-		P0.add(FL,c1);
+		FontUD=new JComboBox();
+		FontUD.setName("FontUD");
+		ApplySize(FontUD,20*bw,bh);
+		FontH=AvailableFonts.length-1;
+		FontUD.setModel(new DefaultComboBoxModel<>(AvailableFonts));
+        FontUD.addActionListener(this);
+        FontUD.addMouseWheelListener(this);
+		P0.add(FontUD,c1);	
+	
+        //Row11 Author
+        c1.gridy=10;
+        c1.gridx=0;
+        AuthL=new JLabel("Author");
+		AuthL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(AuthL,20*bw,bh);
+		P0.add(AuthL,c1);
 		
 		c1.gridx=1;
-		FUD=new JComboBox();
-		FUD.setName("FUD");
-		ApplySize(FUD,20*bw,bh);
-		FUDL=0;
-		FUDH=fonts.length;
-		FUD.setModel(new DefaultComboBoxModel<>(fonts));
-        FUD.addActionListener(this);
-        FUD.addMouseWheelListener(this);
-        //FUD.setOpaque(true);
-		P0.add(FUD,c1);	*/
+		AuthUD=new JComboBox();
+		AuthUD.setName("AuthUD");
+		ApplySize(AuthUD,20*bw,bh);
+		AuthH=AvailableAuthors.length-1;
+		AuthUD.setModel(new DefaultComboBoxModel<>(AvailableAuthors));
+        AuthUD.addActionListener(this);
+        AuthUD.addMouseWheelListener(this);
+		P0.add(AuthUD,c1);	
 		
+        //Row12 DrawOption (TBI)
+        
+        //Row13 BlurRadius
+        c1.gridy=12;
+		c1.gridx=0;
+		BlurL=new JLabel("Blur Radius(px)");
+		BlurL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(BlurL,20*bw,bh);
+		P0.add(BlurL,c1);
+
+		c1.gridx=1;
+		BlurUD=new JSpinner();
+		ApplySize(BlurUD,20*bw,bh);
+		BlurUD.setName("BlurUD");
+		BlurUD.setModel(new SpinnerNumberModel(0,0,20,1));
+		BlurUD.addChangeListener(this);
+		BlurUD.addMouseWheelListener(this);
+		P0.add(BlurUD,c1);	
 		
+        //Row14 UseWatermark
+        c1.gridy=13;
+        c1.gridx=0;
+        Enable=new JCheckBox("Apply Watermark");
+        ApplySize(Enable,20*bw,bh);
+		Enable.setName("Enable");
+		Enable.addActionListener(this);
+		P0.add(Enable,c1);	
 		
-		ApplySize(P0,45*bw,9*bh+70);		
+		c1.gridx=1;
+		RefreshBtn=new JButton("Refresh Prev.");
+		RefreshBtn.setName("RefreshBtn");
+		RefreshBtn.addActionListener(this);
+		ApplySize(RefreshBtn,20*bw,bh);
+		P0.add(RefreshBtn,c1);
 		
+        
+        //Row15 preview
+        c1.gridy=14;
+        c1.gridx=0;
+        c1.gridwidth=2;
+        PrevLabMain=new JLabel();
+        PrevLabMain.setOpaque(true);
+        PrevLabMain.setBackground(Color.WHITE);
+		ApplySize(PrevLabMain,40*bw,5*bh);
+		P0.add(PrevLabMain,c1);
 		
+		//Row16 ProgressBar
+        c1.gridy=15;
+        c1.gridx=0;
+        c1.gridwidth=2;
+        RepBar=new JProgressBar(0,1000);
+        RepBar.setStringPainted(true);
+        RepBar.setString("OK");
+        RepBar.setValue(100);
+        ApplySize(RepBar,40*bw,1*bh);
+        RepBar.updateUI();
+		P0.add(RepBar,c1);
 		
+        
+        
+        
+		ApplySize(P0,45*bw,20*bh+70);		
 		//end of fourth panel		
 		//Addition to main
 		add(P0);		
@@ -688,44 +660,99 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		setSize(P0.getWidth()+10,P0.getHeight()+10);	
 	}	
 	
+	void RequestRefresh(){
+		needrefresh=true;
+		UpdateRepBar("Refresh needed!",0);
+	}
+	
+	void EndRefresh(){
+		needrefresh=false;
+		UpdateRepBar("Up To Date!",1000);
+	}
+	
+	void UpdateRepBar(String data,int value){
+		if(value<0) RepBar.setValue(0);
+		else if(value>1000) RepBar.setValue(1000);
+		else RepBar.setValue(value);
+		if(data!=null) RepBar.setString(data);
+		//RepBar.updateUI();
+	}
+	
+	void UpdateColorPrev(){
+		MyColor=new Color(RR,GG,BB,255);
+		prevLab1.setBackground(MyColor);		
+	}
+	
+	 public static BufferedImage resizepic(BufferedImage image, int width, int height) {
+		BufferedImage bi = new BufferedImage(width, height, BufferedImage.TRANSLUCENT);
+		Graphics2D g2d = (Graphics2D) bi.createGraphics();
+		//g2d.addRenderingHints(new RenderingHints(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY));
+		g2d.drawImage(image, 0, 0, width, height, null);
+		g2d.dispose();
+		return bi;
+    }
+    
+    public void UpdatePreview(boolean coloronly){
+			UpdateColorPrev();
+			if(coloronly) mysd.Redraw(currentAuth+" "+Datestring,cfname,0,MyColor,BlurRadius);
+			else{
+				Parent.InitializePic();
+				mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius);				
+			}	
+			if(stop) return;
+			UpdateRepBar("Resizing Pic to fit display area",1000);		
+			double r1,r2;
+            int hf,wf;
+            hf=PrevLabMain.getHeight();
+            wf=PrevLabMain.getWidth();
+            r1=(double)mysd.FinalImage.getWidth()/(double)mysd.FinalImage.getHeight();
+            r2=(double)wf/(double)hf;
+            if (r1>r2) hf=(int)((double)wf/r1+0.5);
+            if (r1<r2) wf=(int)((double)hf*r1+0.5);
+            picIco.setImage(resizepic(mysd.FinalImage,wf,hf));        
+            if(stop) return;
+            PrevLabMain.setIcon(picIco);
+            PrevLabMain.updateUI();          
+            EndRefresh();
+    }
+    
+    public void Upda(){
+		if(sr!=null){
+			while(!sr.getState().toString().equals("TERMINATED")){
+				stop=true;
+				try{
+					Thread.sleep(100);
+				}catch(InterruptedException e){}
+			}	
+		}		
+		stop=false;
+		sr=new SignatureRefresher(this);
+		sr.start();    
+    }
+    
+	
 	 public void actionPerformed(ActionEvent e){
 		String cmd=((Component)e.getSource()).getName();
 		System.out.println("In actionPerformed() : "+cmd);
 		if(cmd.equals("CUD")){
 			if(!Updating){
-				whichcorner=CUD.getSelectedIndex();
-				UpdateWMparams(true);
+				whichcorner=CUD.getSelectedIndex();				
 			}
 		}
-		else if(cmd.equals("ColorUD")){
+		else if(cmd.equals("FontUD")){
 			if(!Updating){
-				colorind=ColorUD.getSelectedIndex();
-				ColorUD.setBackground(theColors[colorind]);
-				ColorUD.setForeground(theFColors[colorind]);
-				//UpdateWMparams(true);
+				cfname=(String)FontUD.getSelectedItem();
+				RequestRefresh();
+				Upda();
 			}
+			
 		}
-	/*	else if(cmd.equals("FUD")){
+		else if(cmd.equals("AuthUD")){
 			if(!Updating){
-				FontIndex=FUD.getSelectedIndex();
-				FUD.setFont(Font.getFont(fonts[FontIndex]));
-				//UpdateWMparams(true);
-			}
-		}*/
-		else if(cmd.equals("ELUD")){
-			if(!Updating){
-				EnableWM=ELUD.isSelected();
-			}		
-		}
-		else if(cmd.equals("BORDUD")){
-			if(!Updating){
-				darken=BORDUD.isSelected();
-			}		
-		}
-		else if(cmd.equals("BLURUD")){
-			if(!Updating){
-				invert=BLURUD.isSelected();
-			}		
+				currentAuth=(String)AuthUD.getSelectedItem();
+				RequestRefresh();
+				Upda();
+			}			
 		}
 		
 		else if(cmd.equals("DateBtn")){
@@ -733,10 +760,20 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			Datestring=GetMonth(date)+" "+year.format(date);
 			DateUD.setText(Datestring);
 		}
+		else if(cmd.equals("RefreshBtn")){
+			RequestRefresh();
+			Upda();
+		}
 		else if(cmd.equals("DateUD")){
 			if(!Updating){
-				Datestring=DateUD.getText();
-				UpdateWMparams(false);
+				Datestring=DateUD.getText();	
+				RequestRefresh();
+			//	UpdatePreview(false);
+			}
+		}
+		else if(cmd.equals("Enable")){
+			if(!Updating){
+				EnableWM=Enable.isSelected();				
 			}
 		}
 	}
@@ -745,63 +782,90 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
     public void stateChanged(ChangeEvent e){
 		String cmd=((Component)e.getSource()).getName();
 		System.out.println("In stateChanged() : "+cmd);
-		if(cmd.equals("IHLUD")){
+		if(cmd.equals("RedUD")){
 			if(!Updating){
-				ImageHeightCM=(double)IHLUD.getValue();
-				UpdateWMparams(false);
+				RR=(int)RedUD.getValue();
+				UpdateColorPrev();
+				RequestRefresh();
+				//UpdatePreview(true);
+				
 			}
 		}
-		else if(cmd.equals("WMHUD")){
+		else if(cmd.equals("BlueUD")){
 			if(!Updating){
-				WMHeightCM=(double)WMHUD.getValue();	
-				UpdateWMparams(false);
+				BB=(int)BlueUD.getValue();
+				UpdateColorPrev();
+				RequestRefresh();
+				//UpdatePreview(true);
+			}
+		}
+		else if(cmd.equals("GreenUD")){
+			if(!Updating){
+				GG=(int)GreenUD.getValue();
+				UpdateColorPrev();
+				RequestRefresh();
+				//UpdatePreview(true);
 			}
 		}
 		else if(cmd.equals("SXUD")){
 			if(!Updating){
-				SpaceXCM=(double)SXUD.getValue();
-				UpdateWMparams(true);
+				SpaceYCM=(double)SYUD.getValue();
+			//	UpdateWMparams(true);
 			}
 		}
 		else if(cmd.equals("SYUD")){
 			if(!Updating){
 				SpaceYCM=(double)SYUD.getValue();
-				UpdateWMparams(true);
+				//UpdateWMparams(true);
 			}
-		}		
+		}	
+		else if(cmd.equals("WMHUD")){
+			if(!Updating){
+				WMHeightCM=(double)WMHUD.getValue();	
+				RequestRefresh();
+				//UpdatePreview(false);
+			}
+		}
+		else if(cmd.equals("BlurUD")){
+			if(!Updating){
+				BlurRadius=(int)BlurUD.getValue();	
+				RequestRefresh();
+				//UpdatePreview(true);
+			}
+		}
 	}
     
     
     public void mouseWheelMoved(MouseWheelEvent e){
 		String cmd=e.getComponent().getName();
 		System.out.println("In mouseWheelMoved() : "+cmd);
-		if(cmd.equals("IHLUD")){
-			double t=(double)IHLUD.getValue();
-			t-=1*e.getWheelRotation();
-			if(t<1) t=1;
-			if(t>500) t=500;
-			IHLUD.setValue(t);	
-		}	
-		else if(cmd.equals("WMHUD")){
+		if(cmd.equals("WMHUD")){
 			double t=(double)WMHUD.getValue();
 			t-=0.2*e.getWheelRotation();
 			if(t<0.2) t=0.2;
-			if(t>10) t=10;
+			if(t>30) t=30;
 			WMHUD.setValue(t);	
 		}
 		else if(cmd.equals("SXUD")){
 			double t=(double)SXUD.getValue();
 			t-=0.2*e.getWheelRotation();
 			if(t<1) t=1;
-			if(t>10) t=10;
+			if(t>100) t=100;
 			SXUD.setValue(t);	
 		}
 		else if(cmd.equals("SYUD")){
 			double t=(double)SYUD.getValue();
 			t-=0.2*e.getWheelRotation();
 			if(t<1) t=1;
-			if(t>10) t=10;
+			if(t>100) t=100;
 			SYUD.setValue(t);	
+		}
+		else if(cmd.equals("BlurUD")){
+			int t=(int)BlurUD.getValue();
+			t-=e.getWheelRotation();
+			if(t<0) t=0;
+			if(t>20) t=20;
+			BlurUD.setValue(t);	
 		}
 		else if(cmd.equals("CUD")){
 			int t=(int) CUD.getSelectedIndex();
@@ -809,14 +873,21 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			if(t>CUDH) t=CUDH;
 			if(t<CUDL) t=CUDL;
 			CUD.setSelectedIndex(t);		
-		}
-		else if(cmd.equals("ColorUD")){
-			int t=(int) ColorUD.getSelectedIndex();
+		}		
+		else if(cmd.equals("FontUD")){
+			int t=(int) FontUD.getSelectedIndex();
 			t+=e.getWheelRotation();
-			if(t>ColorH) t=ColorH;
-			if(t<ColorL) t=ColorL;
-			ColorUD.setSelectedIndex(t);		
-		}
+			if(t>FontH) t=FontH;
+			if(t<0) t=0;
+			FontUD.setSelectedIndex(t);		
+		}		
+		else if(cmd.equals("AuthUD")){
+			int t=(int) AuthUD.getSelectedIndex();
+			t+=e.getWheelRotation();
+			if(t>AuthH) t=AuthH;
+			if(t<0) t=0;
+			AuthUD.setSelectedIndex(t);		
+		}		
 	}
 	
     //WindowListener
@@ -830,6 +901,5 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	public void 	windowDeiconified(WindowEvent e){}
 	public void 	windowIconified(WindowEvent e){}
 	public void 	windowOpened(WindowEvent e){}
-	
 	
 }

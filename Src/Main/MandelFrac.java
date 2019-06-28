@@ -74,6 +74,9 @@ import java.nio.file.Paths;
 import javax.swing.JFileChooser;
 
 public class MandelFrac extends JPanel implements ActionListener,MouseListener,MouseWheelListener,ComponentListener,KeyListener{
+	boolean PrinterVersion;
+	String FractalName;
+	String SubFractalName;
 	//Control variables used by Formula
 	Formula formula_Proto;
 	Formula formula_used;
@@ -108,12 +111,13 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 	Layer mylayer;
 	FormulaEditor myformula;
 	WaterMarkSettings mywm;
+	PrinterManager myprinter;
 	DrawManager fracdrawer;
+	AdvLoader myloader;
 
 	//Jbuttons and panel
 	JPanel MenuPanel;
-	JButton DrawBtn,StopBtn,UpdateBtn,ResizeBtn,CntrlBtn,FormulaBtn,ColorBtn,OrbitBtn,SaveImgBtn,SaveSetBtn,LoadSetBtn,CorbBtn,WMBtn;
-	
+	JButton DrawBtn,StopBtn,UpdateBtn,ResizeBtn,CntrlBtn,FormulaBtn,ColorBtn,OrbitBtn,SaveImgBtn,SaveSetBtn,LoadSetBtn,CorbBtn,WMBtn,PrinterBtn,SendBtn;	
 	JLabel PicLabel;
 	
 	int[] status;
@@ -133,13 +137,15 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     boolean Starting;
     static String DocFolder;
 
-	MandelFrac(int W,int H){
-		AddFiligrana=true;
+	MandelFrac(int W,int H,boolean UsePrinter){
+		PrinterVersion=UsePrinter;
+		//AddFiligrana=true;
 		JFileChooser fr = new JFileChooser();
         FileSystemView fw = fr.getFileSystemView();
         System.out.println(fw.getDefaultDirectory());
-                
-        DocFolder=fw.getDefaultDirectory().getPath()+File.separator+"MyFractals";
+        
+		if(PrinterVersion) DocFolder=fw.getDefaultDirectory().getPath()+File.separator+"MyFractals"+File.separator+"ReadyToPrint";
+		else DocFolder=fw.getDefaultDirectory().getPath()+File.separator+"MyFractals";
         System.out.println(DocFolder);
         Path p=Paths.get(DocFolder); 
         File dir;
@@ -147,39 +153,41 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
             dir=new File(DocFolder);
             dir.mkdir();
         }
-        p=Paths.get(DocFolder+File.separator+"Sets");
-        System.out.println(DocFolder+File.separator+"Sets");
-        if(Files.notExists(p)){
-            dir=new File(DocFolder+File.separator+"Sets");
-            dir.mkdir();
-        }    
-        p=Paths.get(DocFolder+File.separator+"Orbits");
-        if(Files.notExists(p)){
-            dir=new File(DocFolder+File.separator+"Orbits");
-            dir.mkdir();
-        }
-        p=Paths.get(DocFolder+File.separator+"Colors");
-        if(Files.notExists(p)){
-            dir=new File(DocFolder+File.separator+"Colors");
-            dir.mkdir();
-        }
-        p=Paths.get(DocFolder+File.separator+"Formulas");
-        if(Files.notExists(p)){
-            dir=new File(DocFolder+File.separator+"Formulas");
-            dir.mkdir();
-        }
-         p=Paths.get(DocFolder+File.separator+"ConvOrbits");
-        if(Files.notExists(p)){
-            dir=new File(DocFolder+File.separator+"ConvOrbits");
-            dir.mkdir();
-        }
+        if(!PrinterVersion){
+			p=Paths.get(DocFolder+File.separator+"Sets");
+			System.out.println(DocFolder+File.separator+"Sets");
+			if(Files.notExists(p)){
+				dir=new File(DocFolder+File.separator+"Sets");
+				dir.mkdir();
+			}    
+			p=Paths.get(DocFolder+File.separator+"Orbits");
+			if(Files.notExists(p)){
+				dir=new File(DocFolder+File.separator+"Orbits");
+				dir.mkdir();
+			}
+			p=Paths.get(DocFolder+File.separator+"Colors");
+			if(Files.notExists(p)){
+				dir=new File(DocFolder+File.separator+"Colors");
+				dir.mkdir();
+			}
+			p=Paths.get(DocFolder+File.separator+"Formulas");
+			if(Files.notExists(p)){
+				dir=new File(DocFolder+File.separator+"Formulas");
+				dir.mkdir();
+			}
+			p=Paths.get(DocFolder+File.separator+"ConvOrbits");
+			if(Files.notExists(p)){
+				dir=new File(DocFolder+File.separator+"ConvOrbits");
+				dir.mkdir();
+			}
+		}
         SH=CTRL=false;
 		//Start set
 		NIters=100;
 		//BailOut=100;
 		//JuliaMand=
 		Alternate=Conjugate=Fixed=false;	
-		ForceRes=false;
+		ForceRes=PrinterVersion;//when using printer forceres is always true
 		ForcedW=1920;
 		ForcedH=1080;
 		Cx=-0.5;
@@ -196,10 +204,15 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		mylayer=new Layer();
 		mycontrol=new FractalControl(this);
 		myformula=new FormulaEditor(this);
-		mywm=new WaterMarkSettings(this);
+		pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
+		if(PrinterVersion){
+			myprinter=new PrinterManager(this);
+			mywm=new WaterMarkSettings(this);			
+			myloader=new AdvLoader(this);
+		}
 		ParamR=new double[12];
 		ParamI=new double[12];
-		pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
+		
 		Matrix=new double[imgW*imgH];
 		Pixels=new int[imgW*imgH];
         picIco=new ImageIcon();
@@ -214,10 +227,20 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 	}catch(InterruptedException e){}
 		Starting=false;		
 		//fracdrawer=new DrawManager(this);
-		//fracdrawer.start();		
-        initDraw();
+		//fracdrawer.start();	
+		if(!PrinterVersion) initDraw();
 	}
-
+	
+	public void UpdateParentDataAndLoad(){
+		FractalName=myloader.SelectedMain;
+		SubFractalName=myloader.SelectedSub;
+		if(!FractalName.isEmpty()){
+			ReadBase();
+			if(!SubFractalName.isEmpty() && !SubFractalName.equals("Default")) ReadWMP();
+		}
+	}
+	
+	
 	public void ApplySize(JComponent target,int dimx,int dimy){
 		Dimension d=new Dimension(dimx,dimy);
 		target.setMinimumSize(d);
@@ -235,7 +258,8 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		c.gridx=c.gridy=0;
 		//TopPanel
 		MenuPanel=new JPanel();
-		MenuPanel.setLayout(new GridLayout(1,12,1,1));
+		if(!PrinterVersion) MenuPanel.setLayout(new GridLayout(1,12,1,1));
+		else MenuPanel.setLayout(new GridLayout(1,6,1,1));
 		DrawBtn=new JButton("Draw");
 		DrawBtn.setFocusable(false);
 		DrawBtn.setActionCommand("DrawBtn");
@@ -246,65 +270,84 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		StopBtn.setActionCommand("StopBtn");
 		StopBtn.addActionListener(this);
 		MenuPanel.add(StopBtn);
-		UpdateBtn=new JButton("Update");
-		UpdateBtn.setFocusable(false);
-		UpdateBtn.setActionCommand("UpdateBtn");
-		UpdateBtn.addActionListener(this);
-		MenuPanel.add(UpdateBtn);
-		CntrlBtn=new JButton("Controls");
-		CntrlBtn.setFocusable(false);
-		CntrlBtn.setActionCommand("CntrlBtn");
-		CntrlBtn.addActionListener(this);
-		MenuPanel.add(CntrlBtn);
-		FormulaBtn=new JButton("Formula");
-		FormulaBtn.setFocusable(false);
-		FormulaBtn.setActionCommand("FormulaBtn");
-		FormulaBtn.addActionListener(this);
-		MenuPanel.add(FormulaBtn);
-		ColorBtn=new JButton("Colors");
-		ColorBtn.setFocusable(false);
-		ColorBtn.setActionCommand("ColorBtn");
-		ColorBtn.addActionListener(this);
-		MenuPanel.add(ColorBtn);
-		OrbitBtn=new JButton("Orbits");
-		OrbitBtn.setFocusable(false);
-		OrbitBtn.setActionCommand("OrbitBtn");
-		OrbitBtn.addActionListener(this);
-		MenuPanel.add(OrbitBtn);
-		CorbBtn=new JButton("Conv. Orb.");
-		CorbBtn.setFocusable(false);
-		CorbBtn.setActionCommand("CorbBtn");
-		CorbBtn.addActionListener(this);
-		MenuPanel.add(CorbBtn);
-		WMBtn=new JButton("WaterMark");
-		WMBtn.setFocusable(false);
-		WMBtn.setActionCommand("WMBtn");
-		WMBtn.addActionListener(this);
-		MenuPanel.add(WMBtn);
+		if(!PrinterVersion){
+			UpdateBtn=new JButton("Update");
+			UpdateBtn.setFocusable(false);
+			UpdateBtn.setActionCommand("UpdateBtn");
+			UpdateBtn.addActionListener(this);
+			MenuPanel.add(UpdateBtn);
+			CntrlBtn=new JButton("Controls");
+			CntrlBtn.setFocusable(false);
+			CntrlBtn.setActionCommand("CntrlBtn");
+			CntrlBtn.addActionListener(this);
+			MenuPanel.add(CntrlBtn);
+			FormulaBtn=new JButton("Formula");
+			FormulaBtn.setFocusable(false);
+			FormulaBtn.setActionCommand("FormulaBtn");
+			FormulaBtn.addActionListener(this);
+			MenuPanel.add(FormulaBtn);
+			ColorBtn=new JButton("Colors");
+			ColorBtn.setFocusable(false);
+			ColorBtn.setActionCommand("ColorBtn");
+			ColorBtn.addActionListener(this);
+			MenuPanel.add(ColorBtn);
+			OrbitBtn=new JButton("Orbits");
+			OrbitBtn.setFocusable(false);
+			OrbitBtn.setActionCommand("OrbitBtn");
+			OrbitBtn.addActionListener(this);
+			MenuPanel.add(OrbitBtn);
+			CorbBtn=new JButton("Conv. Orb.");
+			CorbBtn.setFocusable(false);
+			CorbBtn.setActionCommand("CorbBtn");
+			CorbBtn.addActionListener(this);
+			MenuPanel.add(CorbBtn);
+		}
+		else{
+			WMBtn=new JButton("WaterMark");
+			WMBtn.setFocusable(false);
+			WMBtn.setActionCommand("WMBtn");
+			WMBtn.addActionListener(this);
+			MenuPanel.add(WMBtn);
+			PrinterBtn=new JButton("Printer");
+			PrinterBtn.setFocusable(false);
+			PrinterBtn.setActionCommand("PrinterBtn");
+			PrinterBtn.addActionListener(this);
+			MenuPanel.add(PrinterBtn);			
+		}
 		SaveImgBtn=new JButton("Save Img");
 		SaveImgBtn.setFocusable(false);
 		SaveImgBtn.setActionCommand("SaveImgBtn");
 		SaveImgBtn.addActionListener(this);
 		MenuPanel.add(SaveImgBtn);
-		SaveSetBtn=new JButton("Save Set");
-		SaveSetBtn.setFocusable(false);
-		SaveSetBtn.setActionCommand("SaveSetBtn");
-		SaveSetBtn.addActionListener(this);
-		MenuPanel.add(SaveSetBtn);
+		if(!PrinterVersion){
+			SaveSetBtn=new JButton("Save Set");
+			SaveSetBtn.setFocusable(false);
+			SaveSetBtn.setActionCommand("SaveSetBtn");
+			SaveSetBtn.addActionListener(this);
+			MenuPanel.add(SaveSetBtn);
+			SendBtn=new JButton("Send Set");
+			SendBtn.setFocusable(false);
+			SendBtn.setActionCommand("SendBtn");
+			SendBtn.addActionListener(this);
+			MenuPanel.add(SendBtn);
+		}
 		LoadSetBtn=new JButton("Load Set");
 		LoadSetBtn.setFocusable(false);
 		LoadSetBtn.setActionCommand("LoadSetBtn");
 		LoadSetBtn.addActionListener(this);
 		MenuPanel.add(LoadSetBtn);
-				
+		
+		
 		add(MenuPanel,c);
 		c.gridy=1;
 		PicLabel=new JLabel();
 		PicLabel.setOpaque(true);
 		PicLabel.setName("PicLabel");
 		PicLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		PicLabel.addMouseListener(this);
-		PicLabel.addMouseWheelListener(this);
+		if(!PrinterVersion){
+			PicLabel.addMouseListener(this);
+			PicLabel.addMouseWheelListener(this);
+		}
 	//	PicLabel.addKeyListener(this);
 		add(PicLabel,c);		
 	}
@@ -471,6 +514,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 				int []locpix=new int[imgW];
 				for(j=0;j<imgW;j++){
 					locpix[j]=mylayer.GetColor(iter.calcPoint_full(GetX(j),GetY(iline)));
+					if(PrinterVersion) locpix[j]=mywm.ApplySignature(j,iline,locpix[j],0);
 				}
 				pic.setRGB(0, iline, imgW,1,locpix,0,imgW);
 				status[iline]=1;
@@ -495,6 +539,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 //Draw thread management
 //Stop Draw Command
 	public void StopDraw(){
+		if(fracdrawer==null) return;
 		fracdrawer.active=false; //should stop everything
 		while(true){
 			int nsleep=0;
@@ -544,6 +589,7 @@ void PrintToFile(BufferedWriter o) throws IOException{
 	PrintData(o);	
 }
 
+//Non printer version only
 void PrintFile(File f){
 	try{
 	    BufferedWriter o=new BufferedWriter(new FileWriter(f));
@@ -552,10 +598,34 @@ void PrintFile(File f){
 		mylayer.PrintToFile(o);
 		myorb.PrintToFile(o);
 		myorb_c.PrintToFile(o);
-		mywm.PrintToFile(o);
 	    o.close();
 	}catch(IOException e){}
 }
+
+//Printerversion only
+void PrintFile(){
+	String nf=DocFolder+File.separator+FractalName;
+	Path p=Paths.get(nf); 
+	File dir;
+	if(Files.notExists(p)){
+		dir=new File(nf);
+		dir.mkdir();
+	}
+	File f=new File(DocFolder+File.separator+FractalName+File.separator+myprinter.GenerateName()+".frc");
+	try{
+	    BufferedWriter o=new BufferedWriter(new FileWriter(f));
+	    PrintToFile(o);
+	    myformula.PrintToFile(o);
+		mylayer.PrintToFile(o);
+		myorb.PrintToFile(o);
+		myorb_c.PrintToFile(o);
+		mywm.PrintToFile(o);
+		myprinter.PrintToFile(o);
+	    o.close();
+	}catch(IOException e){}	
+}
+
+
 
 public void ReadData(BufferedReader i) throws IOException{
 	StringTokenizer st;
@@ -566,7 +636,7 @@ public void ReadData(BufferedReader i) throws IOException{
 		st=new StringTokenizer(temp);
 		String vname=st.nextToken();
 		if(vname.equals("ForceRes")){
-			ForceRes=Boolean.parseBoolean(st.nextToken());
+			if(!PrinterVersion) ForceRes=Boolean.parseBoolean(st.nextToken());
 		}
 		else if(vname.equals("ForcedW")){
 			ForcedW=Integer.parseInt(st.nextToken());	
@@ -607,6 +677,7 @@ public void ReadFromFile(File f){
 				}
 				if(temp.equals("#MAIN")){
 					ReadData(in);
+					if(PrinterVersion) ForceRes=true;
 					GetCpDfromCorners();
 					GetCornersfromCpD();
 					mycontrol.UpdateData();
@@ -619,16 +690,33 @@ public void ReadFromFile(File f){
 		return;
 	}
 	
-
+//non Printer version only
 public void ReadFile(File in){
 	ReadFromFile(in);
 	myformula.ReadFromFile(in);
 	mylayer.ReadFromFile(in);
 	myorb.ReadFromFile(in);		
 	myorb_c.ReadFromFile(in);	
-	mywm.ReadFromFile(in);
 	StopDraw();
-    initDraw();      
+	initDraw();      
+}
+
+//non Printer version only
+public void ReadBase(){
+	File in=new File(DocFolder+File.separator+FractalName+".frc");
+	ReadFromFile(in);
+	myformula.ReadFromFile(in);
+	mylayer.ReadFromFile(in);
+	myorb.ReadFromFile(in);		
+	myorb_c.ReadFromFile(in);
+}
+
+public void ReadWMP(){
+	File in=new File(DocFolder+File.separator+FractalName+File.separator+SubFractalName+".frc");
+	mywm.ReadFromFile(in);
+	myprinter.ReadFromFile(in);
+	StopDraw();
+	initDraw();      
 }
 
 
@@ -670,6 +758,12 @@ public void actionPerformed(ActionEvent e){
 		else if(cmd.equals("WMBtn")){
 			mywm.setVisible(true);
 		}
+		else if(cmd.equals("PrinterBtn")){
+			myprinter.setVisible(true);
+		}
+		else if (cmd.equals("SendBtn")){
+			SendSet();		
+		}
 		else if(cmd.equals("SaveSetBtn")){
 			JFileChooser fc =new  JFileChooser();
 			fc.setCurrentDirectory(new File(MandelFrac.DocFolder+File.separator+"Sets"));
@@ -683,40 +777,77 @@ public void actionPerformed(ActionEvent e){
 			PrintFile(f);
 		}
 		else if(cmd.equals("LoadSetBtn")){
-			JFileChooser fc =new  JFileChooser();
-			fc.setCurrentDirectory(new File(MandelFrac.DocFolder+File.separator+"Sets"));
-			fc.setFileFilter(new FileNameExtensionFilter("Fractal Set file", "frc"));
-			fc.showOpenDialog(this);
-			File f=fc.getSelectedFile();
-			if(f==null)return;
-			String ptitle=f.getPath();
-			if (!ptitle.endsWith(".frc")) ptitle+=".frc";
-			f=new File(ptitle);// TODO add your handling code here:			
-			ReadFile(f);
+			if(!PrinterVersion){
+				JFileChooser fc =new  JFileChooser();
+				fc.setCurrentDirectory(new File(MandelFrac.DocFolder+File.separator+"Sets"));
+				fc.setFileFilter(new FileNameExtensionFilter("Fractal Set file", "frc"));
+				fc.showOpenDialog(this);
+				File f=fc.getSelectedFile();
+				if(f==null)return;
+				String ptitle=f.getPath();
+				if (!ptitle.endsWith(".frc")) ptitle+=".frc";
+				f=new File(ptitle);// TODO add your handling code here:			
+				ReadFile(f);
+			}
+			else myloader.setVisible(true);
 		}
 		else if(cmd.equals("SaveImgBtn")){
-			JFileChooser fc =new  JFileChooser();
-			fc.setCurrentDirectory(new File(MandelFrac.DocFolder));
-			fc.setFileFilter(new FileNameExtensionFilter("PNG file", "png"));
-			fc.showSaveDialog(this);			
-			File f=fc.getSelectedFile();
-			if(f!=null){
-				String ptitle=f.getPath();
-				if (!ptitle.endsWith(".png")) ptitle+=".png";
-				f=new File(ptitle);
+			if(!PrinterVersion){
+				JFileChooser fc =new  JFileChooser();
+				fc.setCurrentDirectory(new File(MandelFrac.DocFolder));
+				fc.setFileFilter(new FileNameExtensionFilter("PNG file", "png"));
+				fc.showSaveDialog(this);			
+				File f=fc.getSelectedFile();
+				if(f!=null){
+					String ptitle=f.getPath();
+					if (!ptitle.endsWith(".png")) ptitle+=".png";
+					f=new File(ptitle);
+					try {
+						ImageIO.write(pic,"png",f);// TODO add your handling code here:
+					} catch (IOException ex) {}
+					//also save settings
+					char sep=File.separator.charAt(0);
+					String temp=MandelFrac.DocFolder+File.separator+"Sets"+ptitle.substring(ptitle.lastIndexOf(sep),ptitle.length()-3)+"frc";
+					f=new File(temp);
+					PrintFile(f);
+				}
+			}
+			else{
+				String ptitle=myprinter.GenerateName();
+				File f=new File(DocFolder+File.separator+FractalName+File.separator+myprinter.GenerateName()+".png");
 				try {
 					ImageIO.write(pic,"png",f);// TODO add your handling code here:
 				} catch (IOException ex) {}
-				//also save settings
-				char sep=File.separator.charAt(0);
-				String temp=MandelFrac.DocFolder+File.separator+"Sets"+ptitle.substring(ptitle.lastIndexOf(sep),ptitle.length()-3)+"frc";
-				f=new File(temp);
-				PrintFile(f);
-			}
-			//System.out.println(temp);			
-		}
-		
+				PrintFile();
+			}			
+		}	
+	}
 	
+	public void SendSet(){
+		JFileChooser fc =new  JFileChooser();
+		fc.setCurrentDirectory(new File(MandelFrac.DocFolder+File.separator+"ReadyToPrint"));
+		fc.setFileFilter(new FileNameExtensionFilter("Fractal Set file", "frc"));
+		fc.showSaveDialog(this);
+		File f=fc.getSelectedFile();
+		if(f==null)return;
+		String ptitle=f.getPath();
+		String realtitle=ptitle.substring(ptitle.lastIndexOf('/')+1);
+		if(realtitle.endsWith(".frc")) realtitle=realtitle.substring(0,realtitle.length()-4);
+		System.out.println(DocFolder+File.separator+"ReadyToPrint"+File.separator+realtitle+".frc");
+		f=new File(DocFolder+File.separator+"ReadyToPrint"+File.separator+realtitle+".frc");// TODO add your handling code here:			
+		PrintFile(f);	
+		String nf=DocFolder+File.separator+"ReadyToPrint"+File.separator+realtitle;
+		Path p=Paths.get(nf); 
+		File dir;
+		if(Files.notExists(p)){
+			dir=new File(nf);
+			dir.mkdir();
+		}	
+	}
+	
+	public void RefreshImageSize(){
+		ForcedH=myprinter.GetHeight();
+		ForcedW=myprinter.GetWidth();	
 	}
 	
 	 public void mousePressed(MouseEvent e) {}
@@ -855,6 +986,18 @@ public void actionPerformed(ActionEvent e){
 		System.out.printf("Special=%s\n",Special);
 	}
 	
+	public void InitializePic(){
+		RefreshImageSize(); //Ask myprinter to calculate image dimensions
+		imgW=ForcedW;
+		imgH=ForcedH;
+		if(imgW!=pic.getWidth() || imgH!=pic.getHeight()){
+			pic=null;
+			Matrix=null;
+			Pixels=null;
+			pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
+		}	
+	}
+	
 	//Init Draw Command		 
 	public void initDraw(){
 		
@@ -864,10 +1007,12 @@ public void actionPerformed(ActionEvent e){
 			System.out.printf("Stopping Drawer %s\n",fracdrawer.getState().toString());
 			if(!fracdrawer.getState().toString().equals("TERMINATED")) StopDraw();
 		}
+		if(PrinterVersion) ReadBase();
 		//allocate image
 		imgW=PicLabel.getWidth();
 		imgH=PicLabel.getHeight();
         if (ForceRes){
+			if(PrinterVersion) RefreshImageSize(); //Ask myprinter to calculate image dimensions
 			imgW=ForcedW;
 			imgH=ForcedH;
 		}
@@ -886,6 +1031,9 @@ public void actionPerformed(ActionEvent e){
 			}
 		}
 		
+		//Prepare watermark
+		if(PrinterVersion && mywm.EnableWM) mywm.PrepareSignatureAndULC();
+		
 		//Specialize formula
 		//Copy Parameters
 		RefreshParameters();
@@ -897,7 +1045,7 @@ public void actionPerformed(ActionEvent e){
 		iter.Specialize(this);
     
 		//Prepare filigrana
-		PrepareFiligrana();
+	//	PrepareFiligrana();
 		//set parameters of thread
 		status=new int[imgH];
 		for(int i=0;i<imgH;i++) status[i]=0;
@@ -918,7 +1066,7 @@ public void actionPerformed(ActionEvent e){
 		res.SetGeneral(this);
 		return res;
 	}
-	
+	/*
 	private BufferedImage resizeImageWithHint(BufferedImage originalImage){
 		double ratio=(double)originalImage.getHeight()/(double)originalImage.getWidth();
 		int iW,iH;

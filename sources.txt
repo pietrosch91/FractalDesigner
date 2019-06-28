@@ -1,8 +1,12 @@
+Src/Main/AdvLoader.java
 Src/Main/DrawManager.java
 Src/Main/FractalCalculator.java
 Src/Main/FractalControl.java
 Src/Main/FractalDesigner.java
 Src/Main/MandelFrac.java
+Src/Main/PrinterManager.java
+Src/Main/SignatureDrawer.java
+Src/Main/SignatureRefresher.java
 Src/Main/WaterMarkSettings.java
 Src/Colouring/ColorComponent.java
 Src/Colouring/ColoringManager.java

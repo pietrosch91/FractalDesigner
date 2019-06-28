@@ -228,7 +228,7 @@ public class DrawManager extends Thread {
 				lockcolor=false;
 			}
 		}
-		ParentM.mywm.ApplyWM();
+		//if(ParentM.PrinterVersion)ParentM.mywm.ApplyWM();
 		ParentM.Update();
 		System.out.println("Closing Draw Manager thread");
 	}
