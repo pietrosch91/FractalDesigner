@@ -35,8 +35,9 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 
 public class WaterMarkSettings extends JFrame implements ActionListener,MouseWheelListener,ChangeListener,WindowListener{
-	//String fontname="LouisaCP";
+	//String fontname="LouisaCP";	
 	//String fonttype="otf";
+	int extrapix;
 	boolean stop;
 	SignatureRefresher sr;
 	Color MyColor;
@@ -46,7 +47,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	int XSIZE,YSIZE;
 	
 	static int bw=20;
-	static int bh=20;
+	static int bh=30;
 	
 	JPanel P0;
 	
@@ -96,6 +97,14 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	DateFormat month=new SimpleDateFormat("MM");
 	DateFormat year = new SimpleDateFormat("yyyy");
 	
+	//WM application Type
+	JLabel TypL;
+	String []TypeWM={"Normal","Darken","Lighten"};
+	String Typestring;
+	int TypH;
+	JComboBox TypUD;
+	
+	
 	//PreviewLab
 	JLabel PrevLabMain;
 	
@@ -108,10 +117,19 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		return Full.substring(0,3)+".";
 	}
 	
+	
 	//BlurRadius
 	JLabel BlurL;
 	JSpinner BlurUD;
 	int BlurRadius;
+	
+	//rdeffect x-y
+	JLabel X3dL;
+	JSpinner X3dUD;
+	int X3d;
+	JLabel Y3dL;
+	JSpinner Y3dUD;
+	int Y3d;
 	
 	//Enable-disable
 	JCheckBox Enable;
@@ -149,9 +167,12 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		EnableWM=false;
 		cfname="";
 		currentAuth="";
+		Typestring="";
+		X3d=Y3d=0;
 		Updating=false;
 		BuildGraphics();
-		mysd=new SignatureDrawer(p,this);		
+		mysd=new SignatureDrawer(p,this);
+		extrapix=mysd.extrapix;
 		UpdateData();
 	}
 	
@@ -206,57 +227,72 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	
 	
 	public void PrepareSignatureAndULC(){
-		if(needrefresh) mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius);
+		if(needrefresh) mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius,X3d,Y3d);
 		UpdateRepBar("Finding Upper Left corner!",1000);
 		XSIZE=mysd.FinalImage.getWidth();
 		YSIZE=mysd.FinalImage.getHeight();
 		switch (whichcorner){
 			case 0:
-				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
-				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-extrapix;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
 				break;
 			case 1:
 				XUL=(Parent.imgW-XSIZE)/2;
-				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
 				break;
 			case 2:
-				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+20;
-				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+extrapix;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
 				break;
 			case 3:
-				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
-				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+20;
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-extrapix;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+extrapix;
 				break;
 			case 4:
 				XUL=(Parent.imgW-XSIZE)/2;
-				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+20;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+extrapix;
 				break;
 			case 5:
-				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+20;
-				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+20;
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+extrapix;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+extrapix;
 				break;
 			default:
-				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
-				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-extrapix;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
 				break;
 		}	
 		EndRefresh();
 	}
 	
-	public int ApplySignature(int i,int j,int Pixel,int type){
+	public int ApplySignature(int i,int j,int Pixel){
 		if(!EnableWM) return Pixel;	
 		int xoff,yoff;
 		xoff=i-XUL;
 		yoff=j-YUL;
 		if(xoff<0 || xoff>=XSIZE) return Pixel;
 		if(yoff<0 || yoff>=YSIZE) return Pixel;
-		return CombinePixel(xoff,yoff,Pixel,type);
+		return CombinePixel(xoff,yoff,Pixel);
 	}
 	
-	public int CombinePixel(int i,int j,int Pixel,int type){
+	//Modify here
+	public int CombinePixel(int i,int j,int Pixel){
 		int pix=mysd.GetPixel(i,j);
 		if(pix==0) return Pixel;
 		else{
+			switch (TypUD.getSelectedIndex()){
+				case 0:
+					return CombNormal(pix,Pixel);
+				case 1:
+					return CombDarken(pix,Pixel);
+				case 2:
+					return CombLighten(pix,Pixel);
+				default:
+					return CombNormal(pix,Pixel);
+			}
+		}
+	}
+	
+	public int CombNormal(int pix,int Pixel){
 			int alpha=(pix>>24)& 0xFF;
 			if(alpha==255) return pix;
 			double alphaD=(double) alpha/255.;
@@ -265,8 +301,27 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			int	Bd=(int)round(alphaD*((double)((pix) & 0xFF))+(1-alphaD)*((double)((Pixel) & 0xFF)));
 			return (255<<24) | Rd<<16 | Gd<<8 | Bd;
 		}	
-		//return pix;
-	}
+	
+	public int CombDarken(int pix,int Pixel){
+			int alpha=(pix>>24)& 0xFF;
+			if(alpha==0) return Pixel;
+			double alphaD=0.75*(1.-(double) alpha/255.)+0.25;
+			int	Rd=(int)round(alphaD*((Pixel>>16) & 0xFF));
+			int	Gd=(int)round(alphaD*((Pixel>>8) & 0xFF));
+			int	Bd=(int)round(alphaD*((Pixel) & 0xFF));
+			return (255<<24) | Rd<<16 | Gd<<8 | Bd;
+		}	
+	
+	public int CombLighten(int pix,int Pixel){
+			int alpha=(pix>>24)& 0xFF;
+			if(alpha==0) return Pixel;
+			double alphaD=0.75*(1.-(double) alpha/255.)+0.25;
+			int	Rd=255-(int)round(alphaD*(255-((Pixel>>16) & 0xFF)));
+			int	Gd=255-(int)round(alphaD*(255-((Pixel>>8) & 0xFF)));
+			int	Bd=255-(int)round(alphaD*(255-((Pixel) & 0xFF)));
+			return (255<<24) | Rd<<16 | Gd<<8 | Bd;
+		}	
+	
 	
 	
 	
@@ -288,10 +343,16 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	    o.write(temp);
 	    temp=String.format("blurr %d\n",BlurRadius);
 	    o.write(temp);
+	    temp=String.format("X3d %d\n",X3d);
+	    o.write(temp);
+	    temp=String.format("Y3d %d\n",Y3d);
+	    o.write(temp);
 	    temp=String.format("FontName %s\n",cfname);
 	    o.write(temp);
 	    temp=String.format("AuthName %s\n",currentAuth);
 	    o.write(temp);	    
+	    temp=String.format("Type %s\n",Typestring);
+	    o.write(temp);
 	    temp=String.format("colorR %d\n",RR);
 	    o.write(temp);
 	    temp=String.format("colorG %d\n",GG);
@@ -339,6 +400,12 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			else if(vname.equals("blurr")){
 				BlurRadius=Integer.parseInt(st.nextToken());
 			}
+			else if(vname.equals("X3d")){
+				X3d=Integer.parseInt(st.nextToken());
+			}
+			else if(vname.equals("Y3d")){
+				Y3d=Integer.parseInt(st.nextToken());
+			}
 			else if(vname.equals("colorR")){
 				RR=Integer.parseInt(st.nextToken());
 			}
@@ -353,6 +420,9 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			}
 			else if(vname.equals("AuthName")){
 				currentAuth=st.nextToken();
+			}
+			else if(vname.equals("Type")){
+				Typestring=st.nextToken();
 			}
 			else if(vname.equals("date")){
 				if(st.hasMoreTokens()){
@@ -411,6 +481,11 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		AuthUD.setSelectedIndex(0);
 		AuthUD.setSelectedItem(currentAuth);
 		currentAuth=(String)AuthUD.getSelectedItem();
+		TypUD.setSelectedIndex(0);
+		TypUD.setSelectedItem(Typestring);
+		Typestring=(String)TypUD.getSelectedItem();		
+		X3dUD.setValue(X3d);
+		Y3dUD.setValue(Y3d);
 		RequestRefresh();
 		UpdatePreview(false);
 		Updating=false;		
@@ -619,6 +694,22 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		P0.add(AuthUD,c1);	
 		
         //Row12 DrawOption (TBI)
+         c1.gridy=11;
+        c1.gridx=0;
+        TypL=new JLabel("Application");
+		TypL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(TypL,20*bw,bh);
+		P0.add(TypL,c1);
+		
+		c1.gridx=1;
+		TypUD=new JComboBox();
+		TypUD.setName("TypUD");
+		ApplySize(TypUD,20*bw,bh);
+		TypH=TypeWM.length-1;
+		TypUD.setModel(new DefaultComboBoxModel<>(TypeWM));
+        TypUD.addActionListener(this);
+        TypUD.addMouseWheelListener(this);
+		P0.add(TypUD,c1);	
         
         //Row13 BlurRadius
         c1.gridy=12;
@@ -632,13 +723,47 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		BlurUD=new JSpinner();
 		ApplySize(BlurUD,20*bw,bh);
 		BlurUD.setName("BlurUD");
-		BlurUD.setModel(new SpinnerNumberModel(0,0,20,1));
+		BlurUD.setModel(new SpinnerNumberModel(0,-20,20,1));
 		BlurUD.addChangeListener(this);
 		BlurUD.addMouseWheelListener(this);
 		P0.add(BlurUD,c1);	
 		
-        //Row14 UseWatermark
+		//Row14 X3d
         c1.gridy=13;
+		c1.gridx=0;
+		X3dL=new JLabel("3D effect Dx");
+		X3dL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(X3dL,20*bw,bh);
+		P0.add(X3dL,c1);
+
+		c1.gridx=1;
+		X3dUD=new JSpinner();
+		ApplySize(X3dUD,20*bw,bh);
+		X3dUD.setName("X3dUD");
+		X3dUD.setModel(new SpinnerNumberModel(0,-20,20,1));
+		X3dUD.addChangeListener(this);
+		X3dUD.addMouseWheelListener(this);
+		P0.add(X3dUD,c1);	
+		
+		//Row15 Y3d
+        c1.gridy=14;
+		c1.gridx=0;
+		Y3dL=new JLabel("3D effect Dy");
+		Y3dL.setHorizontalAlignment(SwingConstants.CENTER);
+		ApplySize(Y3dL,20*bw,bh);
+		P0.add(Y3dL,c1);
+
+		c1.gridx=1;
+		Y3dUD=new JSpinner();
+		ApplySize(Y3dUD,20*bw,bh);
+		Y3dUD.setName("Y3dUD");
+		Y3dUD.setModel(new SpinnerNumberModel(0,-20,20,1));
+		Y3dUD.addChangeListener(this);
+		Y3dUD.addMouseWheelListener(this);
+		P0.add(Y3dUD,c1);	
+		
+        //Row16 UseWatermark
+        c1.gridy=15;
         c1.gridx=0;
         Enable=new JCheckBox("Apply Watermark");
         ApplySize(Enable,20*bw,bh);
@@ -654,8 +779,8 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		P0.add(RefreshBtn,c1);
 		
         
-        //Row15 preview
-        c1.gridy=14;
+        //Row17 preview
+        c1.gridy=16;
         c1.gridx=0;
         c1.gridwidth=2;
         PrevLabMain=new JLabel();
@@ -664,8 +789,8 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		ApplySize(PrevLabMain,40*bw,5*bh);
 		P0.add(PrevLabMain,c1);
 		
-		//Row16 ProgressBar
-        c1.gridy=15;
+		//Row18 ProgressBar
+        c1.gridy=17;
         c1.gridx=0;
         c1.gridwidth=2;
         RepBar=new JProgressBar(0,1000);
@@ -679,7 +804,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
         
         
         
-		ApplySize(P0,45*bw,20*bh+70);		
+		ApplySize(P0,45*bw,22*bh+70);		
 		//end of fourth panel		
 		//Addition to main
 		add(P0);		
@@ -706,7 +831,8 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	}
 	
 	void UpdateColorPrev(){
-		MyColor=new Color(RR,GG,BB,255);
+		if(TypUD.getSelectedIndex()==0) MyColor=new Color(RR,GG,BB,255);
+		else MyColor=Color.BLACK;
 		prevLab1.setBackground(MyColor);		
 	}
 	
@@ -721,10 +847,10 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
     
     public void UpdatePreview(boolean coloronly){
 			UpdateColorPrev();
-			if(coloronly) mysd.Redraw(currentAuth+" "+Datestring,cfname,0,MyColor,BlurRadius);
+			if(coloronly) mysd.Redraw(currentAuth+" "+Datestring,cfname,0,MyColor,BlurRadius,X3d,Y3d);
 			else{
 				Parent.InitializePic();
-				mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius);				
+				mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius,X3d,Y3d);				
 			}	
 			if(stop) return;
 			UpdateRepBar("Resizing Pic to fit display area",1000);		
@@ -781,7 +907,14 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 				Upda();
 			}			
 		}
-		
+		else if(cmd.equals("TypUD")){
+			if(!Updating){
+				Typestring=(String)TypUD.getSelectedItem();
+				UpdateColorPrev();
+				RequestRefresh();
+				Upda();
+			}			
+		}		
 		else if(cmd.equals("DateBtn")){
 			Date date = new Date();
 			Datestring=GetMonth(date)+" "+year.format(date);
@@ -860,6 +993,20 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 				//UpdatePreview(true);
 			}
 		}
+		else if(cmd.equals("X3dUD")){
+			if(!Updating){
+				X3d=(int)X3dUD.getValue();	
+				RequestRefresh();
+				//UpdatePreview(true);
+			}
+		}
+		else if(cmd.equals("Y3dUD")){
+			if(!Updating){
+				Y3d=(int)Y3dUD.getValue();	
+				RequestRefresh();
+				//UpdatePreview(true);
+			}
+		}
 	}
     
     
@@ -890,10 +1037,24 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		else if(cmd.equals("BlurUD")){
 			int t=(int)BlurUD.getValue();
 			t-=e.getWheelRotation();
-			if(t<0) t=0;
+			if(t<-20) t=-20;
 			if(t>20) t=20;
 			BlurUD.setValue(t);	
 		}
+		else if(cmd.equals("X3dUD")){
+			int t=(int)X3dUD.getValue();
+			t-=e.getWheelRotation();
+			if(t<-20) t=-20;
+			if(t>20) t=20;
+			X3dUD.setValue(t);	
+		}
+		else if(cmd.equals("Y3dUD")){
+			int t=(int)Y3dUD.getValue();
+			t-=e.getWheelRotation();
+			if(t<-20) t=-20;
+			if(t>20) t=20;
+			Y3dUD.setValue(t);	
+		}		
 		else if(cmd.equals("CUD")){
 			int t=(int) CUD.getSelectedIndex();
 			t+=e.getWheelRotation();
@@ -907,7 +1068,14 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			if(t>FontH) t=FontH;
 			if(t<0) t=0;
 			FontUD.setSelectedIndex(t);		
-		}		
+		}	
+		else if(cmd.equals("TypUD")){
+			int t=(int) TypUD.getSelectedIndex();
+			t+=e.getWheelRotation();
+			if(t>TypH) t=TypH;
+			if(t<0) t=0;
+			TypUD.setSelectedIndex(t);		
+		}	
 		else if(cmd.equals("AuthUD")){
 			int t=(int) AuthUD.getSelectedIndex();
 			t+=e.getWheelRotation();

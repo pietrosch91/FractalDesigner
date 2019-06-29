@@ -514,7 +514,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 				int []locpix=new int[imgW];
 				for(j=0;j<imgW;j++){
 					locpix[j]=mylayer.GetColor(iter.calcPoint_full(GetX(j),GetY(iline)));
-					if(PrinterVersion) locpix[j]=mywm.ApplySignature(j,iline,locpix[j],0);
+					if(PrinterVersion) locpix[j]=mywm.ApplySignature(j,iline,locpix[j]);
 				}
 				pic.setRGB(0, iline, imgW,1,locpix,0,imgW);
 				status[iline]=1;
