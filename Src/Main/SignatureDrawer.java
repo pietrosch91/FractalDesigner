@@ -57,6 +57,9 @@ public class SignatureDrawer{
 		if(FontID.equals("Level")){
 			res=res.replace(' ','_');			
 		}
+		else if(FontID.equals("Diverplate")){
+			res="<"+res.replace(' ','-')+">";
+		}
 		return res;
 	}
 	
@@ -136,6 +139,18 @@ public class SignatureDrawer{
 		FinalImage=newimg;
 	}
 	
+	public void DrawBorder(){
+		int blk=(255<<24);
+		for(int i=0;i<FinalImage.getWidth();i++){
+			FinalImage.setRGB(i,0,blk);
+			FinalImage.setRGB(i,FinalImage.getHeight()-1,blk);
+		}
+		for(int i=0;i<FinalImage.getHeight();i++){
+			FinalImage.setRGB(0,i,blk);
+			FinalImage.setRGB(FinalImage.getWidth()-1,i,blk);
+		}
+	}
+	
 	
 	public void Generate(String tt,String FontName,int FontStyle,int FinalHpix,Color FC,int BlurRadius){
 		String text=AdaptString(tt,FontName);
@@ -195,6 +210,7 @@ public class SignatureDrawer{
 		w.drawString(text, StartOffset+20, BLOffset+20);
 		w.dispose();
 		Blurrify(BlurRadius);
+		//DrawBorder();
 	}	
 	
 	public void Redraw(String tt,String FontName,int FontStyle,Color FC,int BlurRadius){
@@ -210,5 +226,6 @@ public class SignatureDrawer{
 		w.drawString(text, StartOffset+20, BLOffset+20);
 		w.dispose();
 		Blurrify(BlurRadius);
+		//DrawBorder();
 	}
 }

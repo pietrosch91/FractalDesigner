@@ -54,7 +54,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	JLabel CL;
 	JComboBox CUD;
 	int CUDL,CUDH;
-	String []Corners={"Upper Left","Upper Right","Lower Left","Lower Right"};
+	String []Corners={"Upper Left","Upper Middle","Upper Right","Lower Left","Lower Middle","Lower Right"};
 	int whichcorner;
 	
 	//WMHeight selection
@@ -138,7 +138,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		picIco=new ImageIcon();		
 		LoadFonts();
 		Parent=p;
-		whichcorner=3;
+		whichcorner=5;
 		//FontIndex=0;
 		WMHeightCM=1;
 		SpaceXCM=SpaceYCM=2;
@@ -178,11 +178,30 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 			if (listOfFiles[i].isFile()){
 				//System.out.println("File " + listOfFiles[i].getName());
 				if(listOfFiles[i].getName().endsWith(".ttf") || listOfFiles[i].getName().endsWith(".otf")){
-					AvailableFonts[count]=listOfFiles[i].getName().substring(0,listOfFiles[i].getName().length()-4);
-					count++;
+					try{
+						Font temp=Font.createFont(Font.TRUETYPE_FONT, listOfFiles[i]);
+						AvailableFonts[count]=temp.getFontName();//listOfFiles[i].getName().substring(0,listOfFiles[i].getName().length()-4);
+						count++;
+					}catch(FontFormatException e){
+					}catch(IOException e){};
 				}
 			}
 		}	
+		//now reordering
+		String temp;
+		int didsomething=0;
+		while(true){
+			didsomething=0;
+			for(int i=0;i<count-1;i++){
+				if(AvailableFonts[i].compareTo(AvailableFonts[i+1])>0){
+					didsomething++;
+					temp=AvailableFonts[i];
+					AvailableFonts[i]=AvailableFonts[i+1];
+					AvailableFonts[i+1]=temp;
+				}
+			}
+			if(didsomething==0) break;
+		}
 	}
 	
 	
@@ -197,16 +216,24 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
 				break;
 			case 1:
-				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE-20;
+				XUL=(Parent.imgW-XSIZE)/2;
 				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
 				break;
 			case 2:
-				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
-				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE-20;
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+20;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-20;
 				break;
 			case 3:
-				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE-20;
-				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE-20;
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+20;
+				break;
+			case 4:
+				XUL=(Parent.imgW-XSIZE)/2;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+20;
+				break;
+			case 5:
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+20;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+20;
 				break;
 			default:
 				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-20;
@@ -420,7 +447,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		CUD.setName("CUD");
 		ApplySize(CUD,20*bw,bh);
 		CUDL=0;
-		CUDH=3;
+		CUDH=5;
 		CUD.setModel(new DefaultComboBoxModel<>(Corners));
         CUD.addActionListener(this);
         CUD.addMouseWheelListener(this);
@@ -456,7 +483,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		SXUD=new JSpinner();
 		ApplySize(SXUD,20*bw,bh);
 		SXUD.setName("SXUD");
-		SXUD.setModel(new SpinnerNumberModel(1.0d,1.0d,100.0d,0.2d));
+		SXUD.setModel(new SpinnerNumberModel(1.0d,0.2d,100.0d,0.2d));
 		SXUD.setEditor(new javax.swing.JSpinner.NumberEditor(SXUD, "###0.00"));        		
 		SXUD.addChangeListener(this);
 		SXUD.addMouseWheelListener(this);
@@ -473,7 +500,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		SYUD=new JSpinner();
 		ApplySize(SYUD,20*bw,bh);
 		SYUD.setName("SYUD");
-		SYUD.setModel(new SpinnerNumberModel(1.0d,1.0d,100.0d,0.2d));
+		SYUD.setModel(new SpinnerNumberModel(1.0d,0.2d,100.0d,0.2d));
 		SYUD.setEditor(new javax.swing.JSpinner.NumberEditor(SYUD, "###0.00"));        		
 		SYUD.addChangeListener(this);
 		SYUD.addMouseWheelListener(this);
@@ -809,7 +836,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		}
 		else if(cmd.equals("SXUD")){
 			if(!Updating){
-				SpaceYCM=(double)SYUD.getValue();
+				SpaceXCM=(double)SXUD.getValue();
 			//	UpdateWMparams(true);
 			}
 		}
@@ -849,14 +876,14 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		else if(cmd.equals("SXUD")){
 			double t=(double)SXUD.getValue();
 			t-=0.2*e.getWheelRotation();
-			if(t<1) t=1;
+			if(t<0.2) t=0.2;
 			if(t>100) t=100;
 			SXUD.setValue(t);	
 		}
 		else if(cmd.equals("SYUD")){
 			double t=(double)SYUD.getValue();
 			t-=0.2*e.getWheelRotation();
-			if(t<1) t=1;
+			if(t<0.2) t=0.2;
 			if(t>100) t=100;
 			SYUD.setValue(t);	
 		}
