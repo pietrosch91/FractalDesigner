@@ -417,7 +417,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     
     //Image management
 	public void GetCpDfromCorners(){
-        Cx=(XUL+XDR)/2;
+		Cx=(XUL+XDR)/2;
         Cy=(YUL+YDR)/2;
         double aspectRatio=(double)imgH/(double)imgW;
         if (((YUL-YDR)/(XDR-XUL))>aspectRatio) Pdim=(YUL-YDR)/((double)imgH-1);
@@ -678,6 +678,13 @@ public void ReadFromFile(File f){
 				if(temp.equals("#MAIN")){
 					ReadData(in);
 					if(PrinterVersion) ForceRes=true;
+					imgW=PicLabel.getWidth();
+					imgH=PicLabel.getHeight();
+					if (ForceRes){
+						if(PrinterVersion) RefreshImageSize(); //Ask myprinter to calculate image dimensions
+						imgW=ForcedW;
+						imgH=ForcedH;
+					}					
 					GetCpDfromCorners();
 					GetCornersfromCpD();
 					mycontrol.UpdateData();

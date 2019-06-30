@@ -30,7 +30,17 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import javax.swing.border.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-
+import static java.lang.Math.PI;
+import static java.lang.Math.abs;
+import static java.lang.Math.acos;
+import static java.lang.Math.atan2;
+import static java.lang.Math.cos;
+import static java.lang.Math.tan;
+import static java.lang.Math.floor;
+import static java.lang.Math.log;
+import static java.lang.Math.pow;
+import static java.lang.Math.sin;
+import static java.lang.Math.sqrt;
 
 
 
@@ -163,13 +173,15 @@ public class SignatureDrawer{
 				}
 			}			
 		}
+		double ratio=sqrt(minDist)/(double)abs(radius);
+		
 		if(radius>0){
 			if(minDist>radius*radius) return 0;
-			return (int)round(255*(1.-sqrt(minDist)/(double)(radius)));
+			return (int)round(255*(1+cos(ratio*PI))/2.);
 		}
 		else{
 			if(minDist>radius*radius) return 255;
-			return (int)round(255*sqrt(minDist)/(double)(abs(radius)));		
+			return (int)round(255*(1+cos((1-ratio)*PI))/2.);
 		}
 	}	
 	
@@ -190,7 +202,7 @@ public class SignatureDrawer{
 	
 	
 	public void pic3dify(int deltaX,int deltaY){
-		if(deltaX==0) return;
+		if(deltaX==0 && deltaY==0) return;
 		int baseRGB=BaseColor.getRGB() & 0xFFFFFF;
 		BufferedImage newimg=new BufferedImage(FinalImage.getWidth(),FinalImage.getHeight(),TYPE_INT_ARGB_PRE);
 		for(int i=0;i<newimg.getWidth();i++){
