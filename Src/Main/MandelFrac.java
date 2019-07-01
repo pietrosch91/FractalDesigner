@@ -74,6 +74,11 @@ import java.nio.file.Paths;
 import javax.swing.JFileChooser;
 
 public class MandelFrac extends JPanel implements ActionListener,MouseListener,MouseWheelListener,ComponentListener,KeyListener{
+	boolean SquareActive;
+	int SquareCount;
+	double []xSquare;
+	double []ySquare;
+	int SquareType;
 	boolean PrinterVersion;
 	String FractalName;
 	String SubFractalName;
@@ -138,6 +143,11 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     static String DocFolder;
 
 	MandelFrac(int W,int H,boolean UsePrinter){
+		SquareActive=false;
+		xSquare=new double[2];
+		ySquare=new double[2];
+		SquareCount=0;
+		SquareType=0;
 		PrinterVersion=UsePrinter;
 		//AddFiligrana=true;
 		JFileChooser fr = new JFileChooser();
@@ -429,6 +439,86 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
         XDR=Cx+Pdim*((double)imgW-1)/2;
         YUL=Cy+Pdim*((double)imgH-1)/2;
         YDR=Cy-Pdim*((double)imgH-1)/2;
+    }
+    
+    
+    public void InitSquareRequest(int type){
+		SquareActive=true;
+		SquareCount=0;
+		SquareType=type;		
+		mycontrol.UpdateUISR(type);
+    }
+    
+    public void AbortSquareRequest(){
+		SquareActive=false;
+		SquareCount=0;
+		mycontrol.UpdateUISR(-1);
+    }
+    
+    public void FinishSquareRequest(){
+		SquareActive=false;
+		SquareCount=0;
+		double newXR,newXL,newYU,newYD;
+		double newCX,newCY;
+		
+		if(SquareType==0){//X boundaries
+			if(xSquare[0]>xSquare[1]){
+				newXR=xSquare[0];
+				newXL=xSquare[1];
+			}
+			else if(xSquare[0]<xSquare[1]){
+				newXR=xSquare[1];
+				newXL=xSquare[0];
+			}
+			else return;
+			StopDraw();
+			Cx=(newXR+newXL)/2.;
+			Pdim=(newXR-newXL)/((double)imgW-1); 			
+		}
+		else if(SquareType==1){//y boundaries
+			if(ySquare[0]>ySquare[1]){
+				newYU=ySquare[0];
+				newYD=ySquare[1];
+			}
+			else if(ySquare[0]<ySquare[1]){
+				newYU=ySquare[1];
+				newYD=ySquare[0];
+			}
+			else return;
+			StopDraw();
+			Cy=(newYU+newYD)/2.;
+			Pdim=(newYU-newYD)/((double)imgH-1); 			
+		}
+		else{//full boundaries
+			if(xSquare[0]>xSquare[1]){
+				newXR=xSquare[0];
+				newXL=xSquare[1];
+			}
+			else if(xSquare[0]<xSquare[1]){
+				newXR=xSquare[1];
+				newXL=xSquare[0];
+			}
+			else return;
+			if(ySquare[0]>ySquare[1]){
+				newYU=ySquare[0];
+				newYD=ySquare[1];
+			}
+			else if(ySquare[0]<ySquare[1]){
+				newYU=ySquare[1];
+				newYD=ySquare[0];
+			}
+			else return;
+			StopDraw();
+			XUL=newXL;
+			YUL=newYU;
+			XDR=newXR;
+			YDR=newYD;
+			GetCpDfromCorners();
+		}
+		GetCornersfromCpD();
+		mycontrol.UpdateUISR(-1);
+		mycontrol.UpdateData();
+		initDraw();    
     }
     
     public void SetView(double xul,double yul,double xdr,double ydr){
@@ -869,11 +959,20 @@ public void actionPerformed(ActionEvent e){
 		String cmd=((Component)e.getSource()).getName();
 		System.out.println("In mouseClicked() : "+cmd);
 		if(cmd.equals("PicLabel")){
-			final Point mousePos = PicLabel.getMousePosition();
-			StopDraw();
-            SetCenter(GetX_L(mousePos.x),GetY_L(mousePos.y));
-            mycontrol.UpdateData();
-            initDraw();
+			if(!SquareActive){
+				final Point mousePos = PicLabel.getMousePosition();
+				StopDraw();
+				SetCenter(GetX_L(mousePos.x),GetY_L(mousePos.y));
+				mycontrol.UpdateData();
+				initDraw();
+			}
+			else{
+				final Point mousePos = PicLabel.getMousePosition();
+				xSquare[SquareCount]=GetX_L(mousePos.x);
+				ySquare[SquareCount]=GetY_L(mousePos.y);
+				SquareCount++;
+				if(SquareCount==2) FinishSquareRequest();
+			}
         }
     }
     
@@ -1007,7 +1106,8 @@ public void actionPerformed(ActionEvent e){
 	
 	//Init Draw Command		 
 	public void initDraw(){
-		
+		SquareActive=false;
+		SquareCount=0; 
 		//waitfor previous 
 		if(fracdrawer==null) System.out.printf("FracDrawer not found\n");
 		else{

@@ -25,6 +25,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 
 public class FractalControl extends JFrame implements ActionListener,MouseWheelListener,ChangeListener,WindowListener{
+	Color defbg;
 	String []Angles={"0°","45°","90°","135°","180°","225°","270°","315°"};
 	static int bw=10;
 	static int bh=20;
@@ -41,6 +42,8 @@ public class FractalControl extends JFrame implements ActionListener,MouseWheelL
 	JSpinner CxUD,CyUD,PdimUD;
 	JLabel RotLab;
 	JComboBox RotUD;
+	JPanel P4Bottom;
+	JButton SquareX,SquareY,Square,SquareAbort;
 	
 	
 	
@@ -244,7 +247,34 @@ public class FractalControl extends JFrame implements ActionListener,MouseWheelL
 		
 		//end of fourth panel
 
+		JPanel P4Bottom=new JPanel();
+		P4Bottom.setLayout(new GridLayout(1,4,1,1));
+		SquareX=new JButton("X lim"); 
+		defbg=SquareX.getBackground();
+		SquareX.setFocusable(false);
+		SquareX.setName("SquareX");
+		SquareX.addActionListener(this);
+		P4Bottom.add(SquareX);		
 		
+		SquareY=new JButton("Y lim"); 
+		SquareY.setFocusable(false);
+		SquareY.setName("SquareY");
+		SquareY.addActionListener(this);
+		P4Bottom.add(SquareY);	
+		
+		Square=new JButton("XY lim"); 
+		Square.setFocusable(false);
+		Square.setName("Square");
+		Square.addActionListener(this);
+		P4Bottom.add(Square);	
+		
+		SquareAbort=new JButton("Lim Abort"); 
+		SquareAbort.setFocusable(false);
+		SquareAbort.setName("SquareAbort");
+		SquareAbort.addActionListener(this);
+		P4Bottom.add(SquareAbort);	
+		
+		ApplySize(P4Bottom,45*bw,bh);
 		//Addition to main
 		c.gridx=0;
 		c.gridy=0;
@@ -252,10 +282,27 @@ public class FractalControl extends JFrame implements ActionListener,MouseWheelL
 		add(P3,c);
 		c.gridy=1;
 		add(P4,c);
+		c.gridy=2;
+		add(P4Bottom,c);
 		
 		//main resize
-		setSize(P3.getWidth()+20,P3.getHeight()+P4.getHeight()+60);	
+		setSize(P3.getWidth()+20,P3.getHeight()+P4.getHeight()+P4Bottom.getHeight()+60);	
 	}	
+	
+	public void UpdateUISR(int type){
+		SquareX.setBackground(defbg);
+		SquareY.setBackground(defbg);
+		Square.setBackground(defbg);
+		if(type==0){
+			SquareX.setBackground(Color.GREEN);
+		}
+		else if(type==1){
+			SquareY.setBackground(Color.GREEN);
+		}
+		else if(type==2){
+			Square.setBackground(Color.GREEN);
+		}
+	}
 	
 	 public void actionPerformed(ActionEvent e){
 		String cmd=((Component)e.getSource()).getName();
@@ -266,11 +313,33 @@ public class FractalControl extends JFrame implements ActionListener,MouseWheelL
 				UpdateData();
 			}
 		}
-		if(cmd.equals("RotUD")){
+		else if(cmd.equals("RotUD")){
 			if(!Updating){
 				Parent.RotID=RotUD.getSelectedIndex();
 			}		
 		}
+		else if(cmd.equals("SquareX")){
+			if(!Updating){
+				Parent.InitSquareRequest(0);
+			}		
+		}
+		else if(cmd.equals("SquareY")){
+			if(!Updating){
+				Parent.InitSquareRequest(1);
+			}		
+		}
+		else if(cmd.equals("Square")){
+			if(!Updating){
+				Parent.InitSquareRequest(2);
+			}		
+		}
+		else if(cmd.equals("SquareAbort")){
+			if(!Updating){
+				Parent.AbortSquareRequest();
+			}		
+		}
+		
+		
 	}
 		
 	
