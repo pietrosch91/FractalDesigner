@@ -235,6 +235,51 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		GreenUD.setValue(GG);	
 	}
 	
+	public boolean LoadBackupCopy(File imageFile){
+		try{
+			mysd.BackupCopy=ImageIO.read(imageFile);
+		}catch(IOException e){}
+		if(mysd.BackupCopy!=null){
+			XSIZE=mysd.BackupCopy.getWidth();
+			YSIZE=mysd.BackupCopy.getHeight();
+			switch (whichcorner){
+			case 0:
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-extrapix;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
+				break;
+			case 1:
+				XUL=(Parent.imgW-XSIZE)/2;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
+				break;
+			case 2:
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+extrapix;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
+				break;
+			case 3:
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-extrapix;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+extrapix;
+				break;
+			case 4:
+				XUL=(Parent.imgW-XSIZE)/2;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+extrapix;
+				break;
+			case 5:
+				XUL=Parent.imgW-Parent.myprinter.CmToPixel(SpaceXCM)-XSIZE+extrapix;
+				YUL=Parent.imgH-Parent.myprinter.CmToPixel(SpaceYCM)-YSIZE+extrapix;
+				break;
+			default:
+				XUL=Parent.myprinter.CmToPixel(SpaceXCM)-extrapix;
+				YUL=Parent.myprinter.CmToPixel(SpaceYCM)-extrapix;
+				break;
+			}
+			RestoreBackup();
+			ClearBackup();
+			ApplySignature();
+			return true;
+		}
+		return false;
+	}
+	
 	
 	public void PrepareSignatureAndULC(){
 		if(needrefresh) mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius,X3d,Y3d);
@@ -280,6 +325,7 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 	}
 	
 	public void RestoreBackup(){
+		System.out.printf("Restoring backup, width=%d Height=%d\n",XSIZE,YSIZE);
 		if(mysd.BackupCopy==null) return;
 		for(int i=0;i<XSIZE;i++){
 				for(int j=0;j<YSIZE;j++){

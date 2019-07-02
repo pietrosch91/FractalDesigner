@@ -116,17 +116,17 @@ public class SignatureDrawer{
 	
 	public int GetBackupPixel(int x,int y){
 		if(x<0) return 0;
-		if(x>=FinalImage.getWidth()) return 0;
+		if(x>=BackupCopy.getWidth()) return 0;
 		if(y<0) return 0;
-		if(y>=FinalImage.getHeight()) return 0;
+		if(y>=BackupCopy.getHeight()) return 0;
 		return BackupCopy.getRGB(x,y);	
 	}
 	
 	public void SetBackupPixel(int x,int y,int pix){
 		if(x<0) return;
-		if(x>=FinalImage.getWidth()) return;
+		if(x>=BackupCopy.getWidth()) return;
 		if(y<0) return;
-		if(y>=FinalImage.getHeight()) return;
+		if(y>=BackupCopy.getHeight()) return;
 		BackupCopy.setRGB(x,y,pix);	
 	}
 	

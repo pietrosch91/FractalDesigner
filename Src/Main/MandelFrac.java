@@ -74,6 +74,7 @@ import java.nio.file.Paths;
 import javax.swing.JFileChooser;
 
 public class MandelFrac extends JPanel implements ActionListener,MouseListener,MouseWheelListener,ComponentListener,KeyListener{
+	Color defbg;
 	int CurrentPrintW,CurrentPrintH,CurrentPrintDPI;
 	boolean RenderCompleted;
 	boolean SquareActive;
@@ -277,7 +278,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		//TopPanel
 		MenuPanel=new JPanel();
 		if(!PrinterVersion) MenuPanel.setLayout(new GridLayout(1,12,1,1));
-		else MenuPanel.setLayout(new GridLayout(1,8,1,1));
+		else MenuPanel.setLayout(new GridLayout(1,7,1,1));
 		DrawBtn=new JButton("Draw");
 		DrawBtn.setFocusable(false);
 		DrawBtn.setActionCommand("DrawBtn");
@@ -288,6 +289,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		StopBtn.setActionCommand("StopBtn");
 		StopBtn.addActionListener(this);
 		MenuPanel.add(StopBtn);
+		defbg=StopBtn.getBackground();
 		if(!PrinterVersion){
 			UpdateBtn=new JButton("Update");
 			UpdateBtn.setFocusable(false);
@@ -331,11 +333,6 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 			PickBtn.setActionCommand("PickBtn");
 			PickBtn.addActionListener(this);
 			MenuPanel.add(PickBtn);
-			UpdaWMBtn=new JButton("UpdaDate WM");
-			UpdaWMBtn.setFocusable(false);
-			UpdaWMBtn.setActionCommand("UpdaWMBtn");
-			UpdaWMBtn.addActionListener(this);
-			MenuPanel.add(UpdaWMBtn);			
 			PrinterBtn=new JButton("Printer");
 			PrinterBtn.setFocusable(false);
 			PrinterBtn.setActionCommand("PrinterBtn");
@@ -829,10 +826,47 @@ public void ReadBase(){
 
 public void ReadWMP(){
 	File in=new File(DocFolder+File.separator+FractalName+File.separator+SubFractalName+".frc");
-	mywm.ReadFromFile(in);
 	myprinter.ReadFromFile(in);
+	mywm.ReadFromFile(in);
 	StopDraw();
-	initDraw();      
+	//Load Directly from png file if present....
+	String nf=DocFolder+File.separator+FractalName+File.separator+SubFractalName+".png";
+	Path p=Paths.get(nf); 
+	if(Files.exists(p)){
+		//Prepare image
+		imgW=PicLabel.getWidth();
+		imgH=PicLabel.getHeight();
+        if (ForceRes){
+			if(PrinterVersion) RefreshImageSize(true); //Ask myprinter to calculate image dimensions
+			imgW=ForcedW;
+			imgH=ForcedH;
+		}
+		if(imgW==0 || imgH==0) return;
+		GetCpDfromCorners();
+		GetCornersfromCpD();
+		UpdateLabelCorners();
+		pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
+		status=new int[imgH];
+		for(int i=0;i<imgH;i++) status[i]=0;
+		//Copy Parameters
+		RefreshParameters();
+		//Initialize Iterator      
+		iter=mylayer.GenerateIterator();
+		iter.Specialize(this);
+		//Read image from file
+		File imageFile = new File(nf);
+		try{
+			pic = ImageIO.read(imageFile);
+		}catch(IOException ex){}
+		imageFile = new File(DocFolder+File.separator+FractalName+File.separator+SubFractalName+"_backup.png");
+		boolean res=mywm.LoadBackupCopy(imageFile);
+		if(res) mywm.ApplySignature();
+		Update();
+		RenderCompleted=res;		
+	}
+	else{
+		initDraw();      
+	}
 }
 
 public int GetColorRGB(int XL,int YL){
@@ -958,6 +992,10 @@ public void actionPerformed(ActionEvent e){
 				File f=new File(DocFolder+File.separator+FractalName+File.separator+myprinter.GenerateName()+".png");
 				try {
 					ImageIO.write(pic,"png",f);// TODO add your handling code here:
+				} catch (IOException ex) {}
+				f=new File(DocFolder+File.separator+FractalName+File.separator+myprinter.GenerateName()+"_backup.png");
+				try {
+					ImageIO.write(mywm.mysd.BackupCopy,"png",f);// TODO add your handling code here:
 				} catch (IOException ex) {}
 				PrintFile();
 				myloader.RefreshSubList();
@@ -1173,6 +1211,7 @@ public void actionPerformed(ActionEvent e){
 	
 	//Init Draw Command		 
 	public void initDraw(){
+		
 		if(PrinterVersion){
 			if(!RedrawNeeded()){//this means only the WM is to be applyed
 				if(fracdrawer==null){
@@ -1194,6 +1233,7 @@ public void actionPerformed(ActionEvent e){
 				}				
 			}			
 		}
+		DrawBtn.setBackground(Color.RED);
 		if(PrinterVersion)mywm.ClearBackup();
 		SquareActive=false;
 		SquareCount=0; 
@@ -1216,13 +1256,15 @@ public void actionPerformed(ActionEvent e){
 		GetCpDfromCorners();
 		GetCornersfromCpD();
 		UpdateLabelCorners();
+		if(status.length!=imgH){
+			status=new int[imgH];
+			for(int i=0;i<imgH;i++) status[i]=0;
+		}
 		if(imgW!=pic.getWidth() || imgH!=pic.getHeight()){
 			pic=null;
 			Matrix=null;
 			Pixels=null;
 			pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
-			status=new int[imgH];
-			for(int i=0;i<imgH;i++) status[i]=0;
 			if(!ForceRes){
 				Matrix=new double[imgW*imgH];
 				Pixels=new int[imgW*imgH];
@@ -1247,6 +1289,10 @@ public void actionPerformed(ActionEvent e){
 		//set parameters of thread
 		//status=new int[imgH];
 		if(!PrinterVersion) for(int i=0;i<imgH;i++) status[i]=0;
+		if(PrinterVersion){
+			picIco=new ImageIcon();
+			Update();
+		}
 		fracdrawer=new DrawManager(this);
 		fracdrawer.SetNLines(imgH,0);
 		fracdrawer.coloronly=false;

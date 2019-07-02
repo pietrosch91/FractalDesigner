@@ -35,6 +35,7 @@ class DrawThread extends Thread{
 	}
 	
 	public void run(){
+		//System.out.printf("IlineUp=%d ILineDn=%d\n",IlineUp,IlineDn);
 		if(!conly){
 			frcM.DrawLine(IlineUp);
 			if(IlineDn!=IlineUp)frcM.DrawLine(IlineDn);
@@ -127,7 +128,6 @@ public class DrawManager extends Thread {
 	public void SetNLines(int nl,int init){
 		if(!active){
 			nlines=nl;
-			
 			//status=new int[nlines];
 			//for(int i=0;i<nlines;i++) status[i]=init;
 			if(nl%2==0){
@@ -232,6 +232,7 @@ public class DrawManager extends Thread {
 		}
 		if(ParentM.PrinterVersion) ParentM.mywm.ApplySignature();
 		ParentM.Update();
+		ParentM.DrawBtn.setBackground(ParentM.defbg);
 		System.out.println("Closing Draw Manager thread");
 	}
 	
