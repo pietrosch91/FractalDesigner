@@ -74,6 +74,8 @@ import java.nio.file.Paths;
 import javax.swing.JFileChooser;
 
 public class MandelFrac extends JPanel implements ActionListener,MouseListener,MouseWheelListener,ComponentListener,KeyListener{
+	int CurrentPrintW,CurrentPrintH,CurrentPrintDPI;
+	boolean RenderCompleted;
 	boolean SquareActive;
 	int SquareCount;
 	double []xSquare;
@@ -122,8 +124,9 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 
 	//Jbuttons and panel
 	JPanel MenuPanel;
-	JButton DrawBtn,StopBtn,UpdateBtn,ResizeBtn,CntrlBtn,FormulaBtn,ColorBtn,OrbitBtn,SaveImgBtn,SaveSetBtn,LoadSetBtn,CorbBtn,WMBtn,PrinterBtn,SendBtn;	
+	JButton DrawBtn,StopBtn,UpdateBtn,ResizeBtn,CntrlBtn,FormulaBtn,ColorBtn,OrbitBtn,SaveImgBtn,SaveSetBtn,LoadSetBtn,CorbBtn,WMBtn,PrinterBtn,SendBtn,PickBtn,UpdaWMBtn;	
 	JLabel PicLabel;
+	boolean PickColor;
 	
 	int[] status;
 	int nth;
@@ -143,6 +146,9 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     static String DocFolder;
 
 	MandelFrac(int W,int H,boolean UsePrinter){
+		RenderCompleted=false;
+		CurrentPrintDPI=CurrentPrintH=CurrentPrintW=0;
+		PickColor=false;
 		SquareActive=false;
 		xSquare=new double[2];
 		ySquare=new double[2];
@@ -245,6 +251,8 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		FractalName=myloader.SelectedMain;
 		SubFractalName=myloader.SelectedSub;
 		if(!FractalName.isEmpty()){
+			CurrentPrintDPI=CurrentPrintH=CurrentPrintW=0;
+			RenderCompleted=false;
 			ReadBase();
 			if(!SubFractalName.isEmpty() && !SubFractalName.equals("Default")) ReadWMP();
 		}
@@ -269,7 +277,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		//TopPanel
 		MenuPanel=new JPanel();
 		if(!PrinterVersion) MenuPanel.setLayout(new GridLayout(1,12,1,1));
-		else MenuPanel.setLayout(new GridLayout(1,6,1,1));
+		else MenuPanel.setLayout(new GridLayout(1,8,1,1));
 		DrawBtn=new JButton("Draw");
 		DrawBtn.setFocusable(false);
 		DrawBtn.setActionCommand("DrawBtn");
@@ -318,6 +326,16 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 			WMBtn.setActionCommand("WMBtn");
 			WMBtn.addActionListener(this);
 			MenuPanel.add(WMBtn);
+			PickBtn=new JButton("Pick WM Color");
+			PickBtn.setFocusable(false);
+			PickBtn.setActionCommand("PickBtn");
+			PickBtn.addActionListener(this);
+			MenuPanel.add(PickBtn);
+			UpdaWMBtn=new JButton("UpdaDate WM");
+			UpdaWMBtn.setFocusable(false);
+			UpdaWMBtn.setActionCommand("UpdaWMBtn");
+			UpdaWMBtn.addActionListener(this);
+			MenuPanel.add(UpdaWMBtn);			
 			PrinterBtn=new JButton("Printer");
 			PrinterBtn.setFocusable(false);
 			PrinterBtn.setActionCommand("PrinterBtn");
@@ -354,8 +372,8 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		PicLabel.setOpaque(true);
 		PicLabel.setName("PicLabel");
 		PicLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		if(!PrinterVersion){
-			PicLabel.addMouseListener(this);
+		PicLabel.addMouseListener(this);
+		if(!PrinterVersion){			
 			PicLabel.addMouseWheelListener(this);
 		}
 	//	PicLabel.addKeyListener(this);
@@ -564,7 +582,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 		}
 		else{
 			double imgAR=(double)(XDR-XUL)/(double)(YUL-YDR);
-			double AR=(double)(XDR_L-XUL_L)/(double)(YUL_L-YDR_L);
+			double AR=(double)(PicLabel.getWidth())/(double)(PicLabel.getHeight());
 			if(AR>imgAR){
 				YUL_L=YUL;
 				YDR_L=YDR;
@@ -590,7 +608,8 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
     }
     
     public void DrawLine (int iline){
-        int j,n;
+		if(PrinterVersion && status[iline]>=1) return;
+		int j,n;
         if ((iline<imgH)&&(iline>=0)){
 			if(!ForceRes){
 				for(j=0;j<imgW;j++){
@@ -604,7 +623,7 @@ public class MandelFrac extends JPanel implements ActionListener,MouseListener,M
 				int []locpix=new int[imgW];
 				for(j=0;j<imgW;j++){
 					locpix[j]=mylayer.GetColor(iter.calcPoint_full(GetX(j),GetY(iline)));
-					if(PrinterVersion) locpix[j]=mywm.ApplySignature(j,iline,locpix[j]);
+					//if(PrinterVersion) locpix[j]=mywm.ApplySignature(j,iline,locpix[j]);
 				}
 				pic.setRGB(0, iline, imgW,1,locpix,0,imgW);
 				status[iline]=1;
@@ -771,7 +790,7 @@ public void ReadFromFile(File f){
 					imgW=PicLabel.getWidth();
 					imgH=PicLabel.getHeight();
 					if (ForceRes){
-						if(PrinterVersion) RefreshImageSize(); //Ask myprinter to calculate image dimensions
+						if(PrinterVersion) RefreshImageSize(false); //Ask myprinter to calculate image dimensions
 						imgW=ForcedW;
 						imgH=ForcedH;
 					}					
@@ -816,6 +835,20 @@ public void ReadWMP(){
 	initDraw();      
 }
 
+public int GetColorRGB(int XL,int YL){
+	UpdateLabelCorners();
+	double XLD=GetX_L(XL);
+	double YLD=GetY_L(YL);
+	System.out.printf("X=%f (XUL=%f XDR=%f\nY=%f (YUL=%f YDR=%f\n",XLD,XUL,XDR,YLD,YUL,YDR);
+	System.out.printf("Height=%d (YUL_L=%f YDR_L=%f\n",Height,YUL_L,YDR_L);
+	int posX=(int)round((XLD-XUL)/Pdim);
+	int posY=(int)round((YUL-YLD)/Pdim);
+	if(posX<0 || posX>=imgW) return -1;
+	if(posY<0 || posY>=imgH) return -1;
+	System.out.printf("PicRGB[%d][%d]=%d\n",posX,posY,pic.getRGB(posX,posY) & 0xFFFFFF);
+	return pic.getRGB(posX,posY) & 0xFFFFFF;
+}
+
 
 public void actionPerformed(ActionEvent e){
 		String cmd=e.getActionCommand();
@@ -858,8 +891,19 @@ public void actionPerformed(ActionEvent e){
 		else if(cmd.equals("PrinterBtn")){
 			myprinter.setVisible(true);
 		}
+		else if(cmd.equals("UpdaWMBtn")){
+			if(fracdrawer==null){
+				if(mywm.BackupReady()) mywm.ApplySignature();
+			}
+			else{
+				if(fracdrawer.getState().toString().equals("TERMINATED")) if(mywm.BackupReady()) mywm.ApplySignature();
+			}
+		}
 		else if (cmd.equals("SendBtn")){
 			SendSet();		
+		}
+		else if (cmd.equals("PickBtn")){
+			PickColor=true;
 		}
 		else if(cmd.equals("SaveSetBtn")){
 			JFileChooser fc =new  JFileChooser();
@@ -916,6 +960,7 @@ public void actionPerformed(ActionEvent e){
 					ImageIO.write(pic,"png",f);// TODO add your handling code here:
 				} catch (IOException ex) {}
 				PrintFile();
+				myloader.RefreshSubList();
 			}			
 		}	
 	}
@@ -942,9 +987,15 @@ public void actionPerformed(ActionEvent e){
 		}	
 	}
 	
-	public void RefreshImageSize(){
+	public void RefreshImageSize(boolean reloadCurrent){
+		System.out.printf("Calling RefreshImageSize()\n");
 		ForcedH=myprinter.GetHeight();
 		ForcedW=myprinter.GetWidth();	
+		if(reloadCurrent){	
+			CurrentPrintDPI=myprinter.DPIvalue;
+			CurrentPrintH=myprinter.GetHeight();
+			CurrentPrintW=myprinter.GetWidth();
+		}
 	}
 	
 	 public void mousePressed(MouseEvent e) {}
@@ -959,19 +1010,29 @@ public void actionPerformed(ActionEvent e){
 		String cmd=((Component)e.getSource()).getName();
 		System.out.println("In mouseClicked() : "+cmd);
 		if(cmd.equals("PicLabel")){
-			if(!SquareActive){
-				final Point mousePos = PicLabel.getMousePosition();
-				StopDraw();
-				SetCenter(GetX_L(mousePos.x),GetY_L(mousePos.y));
-				mycontrol.UpdateData();
-				initDraw();
+			if(!PrinterVersion){
+				if(!SquareActive){
+					final Point mousePos = PicLabel.getMousePosition();
+					StopDraw();
+					SetCenter(GetX_L(mousePos.x),GetY_L(mousePos.y));
+					mycontrol.UpdateData();
+					initDraw();
+				}
+				else{
+					final Point mousePos = PicLabel.getMousePosition();
+					xSquare[SquareCount]=GetX_L(mousePos.x);
+					ySquare[SquareCount]=GetY_L(mousePos.y);
+					SquareCount++;
+					if(SquareCount==2) FinishSquareRequest();
+				}
 			}
 			else{
-				final Point mousePos = PicLabel.getMousePosition();
-				xSquare[SquareCount]=GetX_L(mousePos.x);
-				ySquare[SquareCount]=GetY_L(mousePos.y);
-				SquareCount++;
-				if(SquareCount==2) FinishSquareRequest();
+				if(PickColor){
+					System.out.printf("Setting WM color\n");
+					final Point mousePos = PicLabel.getMousePosition();
+					mywm.SetColorRGB(GetColorRGB(mousePos.x,mousePos.y));
+					PickColor=false;
+				}
 			}
         }
     }
@@ -1093,7 +1154,7 @@ public void actionPerformed(ActionEvent e){
 	}
 	
 	public void InitializePic(){
-		RefreshImageSize(); //Ask myprinter to calculate image dimensions
+		RefreshImageSize(false); //Ask myprinter to calculate image dimensions
 		imgW=ForcedW;
 		imgH=ForcedH;
 		if(imgW!=pic.getWidth() || imgH!=pic.getHeight()){
@@ -1104,8 +1165,36 @@ public void actionPerformed(ActionEvent e){
 		}	
 	}
 	
+	public boolean RedrawNeeded(){
+		System.out.printf("%d %d %d %d %d %d\n",CurrentPrintH,myprinter.GetHeight(),CurrentPrintW,myprinter.GetWidth(),CurrentPrintDPI,myprinter.DPIvalue);
+		if((CurrentPrintH==myprinter.GetHeight()) && (CurrentPrintW==myprinter.GetWidth()) && (CurrentPrintDPI==myprinter.DPIvalue)) return false;
+		return true;	
+	}
+	
 	//Init Draw Command		 
 	public void initDraw(){
+		if(PrinterVersion){
+			if(!RedrawNeeded()){//this means only the WM is to be applyed
+				if(fracdrawer==null){
+					if(RenderCompleted && mywm.BackupReady()){
+						mywm.ApplySignature();
+						return;
+					}
+				}
+				else{
+					if(RenderCompleted){
+						if(fracdrawer.getState().toString().equals("TERMINATED")) if(mywm.BackupReady()){
+							mywm.ApplySignature();						
+						}					
+						return;
+					}
+					else{
+						if(fracdrawer.getState().toString().equals("RUNNABLE")) return;					
+					}
+				}				
+			}			
+		}
+		if(PrinterVersion)mywm.ClearBackup();
 		SquareActive=false;
 		SquareCount=0; 
 		//waitfor previous 
@@ -1119,7 +1208,7 @@ public void actionPerformed(ActionEvent e){
 		imgW=PicLabel.getWidth();
 		imgH=PicLabel.getHeight();
         if (ForceRes){
-			if(PrinterVersion) RefreshImageSize(); //Ask myprinter to calculate image dimensions
+			if(PrinterVersion) RefreshImageSize(true); //Ask myprinter to calculate image dimensions
 			imgW=ForcedW;
 			imgH=ForcedH;
 		}
@@ -1132,6 +1221,8 @@ public void actionPerformed(ActionEvent e){
 			Matrix=null;
 			Pixels=null;
 			pic=new BufferedImage(imgW,imgH,TYPE_INT_ARGB_PRE);
+			status=new int[imgH];
+			for(int i=0;i<imgH;i++) status[i]=0;
 			if(!ForceRes){
 				Matrix=new double[imgW*imgH];
 				Pixels=new int[imgW*imgH];
@@ -1139,7 +1230,7 @@ public void actionPerformed(ActionEvent e){
 		}
 		
 		//Prepare watermark
-		if(PrinterVersion && mywm.EnableWM) mywm.PrepareSignatureAndULC();
+		//if(PrinterVersion && mywm.EnableWM) mywm.PrepareSignatureAndULC();
 		
 		//Specialize formula
 		//Copy Parameters
@@ -1154,8 +1245,8 @@ public void actionPerformed(ActionEvent e){
 		//Prepare filigrana
 	//	PrepareFiligrana();
 		//set parameters of thread
-		status=new int[imgH];
-		for(int i=0;i<imgH;i++) status[i]=0;
+		//status=new int[imgH];
+		if(!PrinterVersion) for(int i=0;i<imgH;i++) status[i]=0;
 		fracdrawer=new DrawManager(this);
 		fracdrawer.SetNLines(imgH,0);
 		fracdrawer.coloronly=false;

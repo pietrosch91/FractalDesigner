@@ -271,7 +271,10 @@ public class PrinterManager extends JFrame implements ActionListener,MouseWheelL
 		Wmm=(int)round(10*Wcm);	
 		Hpix=(int)round(Hmm*DPIvalue/25.4);
 		Wpix=(int)round(Wmm*DPIvalue/25.4);
-		if(Parent.mywm!=null) Parent.mywm.RequestRefresh();
+		if(Parent.mywm!=null){
+			Parent.mywm.RequestRefresh();
+			Parent.mywm.ClearBackup();
+		}
 	}
 		
 	public double GetHeightCM(){

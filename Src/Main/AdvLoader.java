@@ -117,6 +117,13 @@ public class AdvLoader extends JFrame implements ActionListener,MouseWheelListen
 		return res;
 	}
 	
+	void RefreshSubList(){
+		SubNames=GetSubList();
+		Nsub=SubNames.length;
+		SubUD.setModel(new DefaultComboBoxModel<>(SubNames));
+		SubUD.setSelectedItem(Parent.myprinter.GenerateName());
+	}
+	
 	String [] GetSubList(){
 		if(SelectedMain.isEmpty()) return new String[1];
 		File folder = new File(SubFolder);

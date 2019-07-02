@@ -163,6 +163,7 @@ public class DrawManager extends Thread {
 	
 	
 	public void run(){
+		ParentM.RenderCompleted=false;
 		while(goon){
 			//System.out.printf("DrawManager is Alive\n");
 			if(active){
@@ -209,7 +210,8 @@ public class DrawManager extends Thread {
 				}
 				if(is_clear){
 					active=false;//Automatic stop at end				
-					ParentM.Update();
+					ParentM.RenderCompleted=true;
+					//ParentM.Update();
 					goon=false;
 				}
 			}
@@ -228,7 +230,7 @@ public class DrawManager extends Thread {
 				lockcolor=false;
 			}
 		}
-		//if(ParentM.PrinterVersion)ParentM.mywm.ApplyWM();
+		if(ParentM.PrinterVersion) ParentM.mywm.ApplySignature();
 		ParentM.Update();
 		System.out.println("Closing Draw Manager thread");
 	}

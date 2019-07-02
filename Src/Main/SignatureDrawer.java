@@ -49,6 +49,7 @@ public class SignatureDrawer{
 	static final int extrapix=40;
 	Color BaseColor;
 	BufferedImage FinalImage;
+	BufferedImage BackupCopy;
 	BufferedImage TempImage;
 	MandelFrac Parent;
 	WaterMarkSettings pwm;
@@ -113,6 +114,25 @@ public class SignatureDrawer{
 		return FinalImage.getRGB(x,y);	
 	}
 	
+	public int GetBackupPixel(int x,int y){
+		if(x<0) return 0;
+		if(x>=FinalImage.getWidth()) return 0;
+		if(y<0) return 0;
+		if(y>=FinalImage.getHeight()) return 0;
+		return BackupCopy.getRGB(x,y);	
+	}
+	
+	public void SetBackupPixel(int x,int y,int pix){
+		if(x<0) return;
+		if(x>=FinalImage.getWidth()) return;
+		if(y<0) return;
+		if(y>=FinalImage.getHeight()) return;
+		BackupCopy.setRGB(x,y,pix);	
+	}
+	
+	public void InitBackup(){
+		BackupCopy=new BufferedImage(FinalImage.getWidth(),FinalImage.getHeight(),TYPE_INT_ARGB_PRE);
+	}
 	
 	
 	public int GetCount(int i,int j,int radius){
@@ -282,6 +302,7 @@ public class SignatureDrawer{
 		System.out.printf("FinalFontSize=%d\n",FinalFontSize);
 		//I got FinalFontSize as well as dimensions
 		FinalImage=new BufferedImage(ActualW+2*extrapix,ActualH+2*extrapix,TYPE_INT_ARGB_PRE);
+		//BackupCopy=new BufferedImage(ActualW+2*extrapix,ActualH+2*extrapix,TYPE_INT_ARGB_PRE);
 		w = (Graphics2D) FinalImage.getGraphics();
 		w.setFont(new Font(FontName,FontStyle, FinalFontSize));
 		alphaChannel = AlphaComposite.Src;
@@ -300,6 +321,7 @@ public class SignatureDrawer{
 		BaseColor=FC;
 		pwm.UpdateRepBar(String.format("Found Font Size %d",FinalFontSize),0);
 		FinalImage=new BufferedImage(ActualW+2*extrapix,ActualH+2*extrapix,TYPE_INT_ARGB_PRE);
+		//FinalImage=new BufferedImage(ActualW+2*extrapix,ActualH+2*extrapix,TYPE_INT_ARGB_PRE);
 		Graphics2D w = (Graphics2D) FinalImage.getGraphics();
 		w.setFont(new Font(FontName,FontStyle, FinalFontSize));
 		AlphaComposite alphaChannel = AlphaComposite.Src;

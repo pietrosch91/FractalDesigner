@@ -225,9 +225,20 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 		}
 	}
 	
+	public void SetColorRGB(int RGBval){
+		if(RGBval==-1) return;
+		RR=(RGBval>>16) & 0xFF;
+		GG=(RGBval>>8) & 0xFF;
+		BB=RGBval & 0xFF;
+		RedUD.setValue(RR);
+		BlueUD.setValue(BB);
+		GreenUD.setValue(GG);	
+	}
+	
 	
 	public void PrepareSignatureAndULC(){
 		if(needrefresh) mysd.Generate(currentAuth+" "+Datestring,cfname,0,Parent.myprinter.CmToPixel(WMHeightCM),MyColor,BlurRadius,X3d,Y3d);
+		mysd.InitBackup();
 		UpdateRepBar("Finding Upper Left corner!",1000);
 		XSIZE=mysd.FinalImage.getWidth();
 		YSIZE=mysd.FinalImage.getHeight();
@@ -262,6 +273,42 @@ public class WaterMarkSettings extends JFrame implements ActionListener,MouseWhe
 				break;
 		}	
 		EndRefresh();
+	}
+	
+	public void ClearBackup(){
+		mysd.BackupCopy=null;
+	}
+	
+	public void RestoreBackup(){
+		if(mysd.BackupCopy==null) return;
+		for(int i=0;i<XSIZE;i++){
+				for(int j=0;j<YSIZE;j++){
+					if(XUL+i>=Parent.imgW) continue;
+					if(YUL+j>=Parent.imgH) continue;
+					Parent.pic.setRGB(XUL+i,YUL+j,mysd.GetBackupPixel(i,j));
+				}
+		}		
+	}
+	
+	public boolean BackupReady(){
+		return mysd.BackupCopy!=null;
+	}
+	
+	public void ApplySignature(){
+		RestoreBackup();	
+		if(EnableWM || !BackupReady()){
+			PrepareSignatureAndULC();
+			for(int i=0;i<XSIZE;i++){
+				for(int j=0;j<YSIZE;j++){
+					if(XUL+i>=Parent.imgW) continue;
+					if(YUL+j>=Parent.imgH) continue;
+					int Pixel=Parent.pic.getRGB(XUL+i,YUL+j);
+					mysd.SetBackupPixel(i,j,Pixel);
+					if(EnableWM) Parent.pic.setRGB(XUL+i,YUL+j,ApplySignature(XUL+i,YUL+j,Pixel));					
+				}
+			}			
+		}
+		Parent.Update();
 	}
 	
 	public int ApplySignature(int i,int j,int Pixel){
